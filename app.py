@@ -11,14 +11,15 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
+import logging
 
 app = FastAPI()
 
 # Set the S3 credentials and config from environment variables
 ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
 SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-BUCKET_NAME = os.environ.get("BUCKET_NAME")
-REGION_NAME = os.environ.get("REGION_NAME")
+BUCKET_NAME = "videosilvids"
+REGION_NAME = "ap-south-1"
 
 s3 = boto3.client(
     "s3",
@@ -47,6 +48,7 @@ def remove_silence(
     padding=200,
     progress_callback=None,
 ):
+    logging.info(f"Starting to remove silence from video: {input_video_url}.")
     input_video_file_name = os.path.basename(input_video_url)
     input_video_local_path = os.path.join(tempfile.gettempdir(), input_video_file_name)
 
@@ -70,6 +72,12 @@ def remove_silence(
         min_silence_len=min_silence_duration,
         silence_thresh=silence_threshold,
     )
+
+    # Check if nonsilent_ranges is None or empty
+    if nonsilent_ranges is None or len(nonsilent_ranges) == 0:
+        logging.error("nonsilent_ranges is None or empty.")
+        raise Exception("nonsilent_ranges is None or empty.")
+
     nonsilent_ranges = [
         (start - padding, end + padding) for start, end in nonsilent_ranges
     ]
@@ -83,6 +91,8 @@ def remove_silence(
 
     temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
     temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
+
+    print(temp_audiofile_path)
 
     final_video.write_videofile(temp_videofile_path, codec="libx264", audio=False)
 
@@ -98,9 +108,21 @@ def remove_silence(
 
     video.close()
 
-    shutil.rmtree(temp_dir)
+    print(input_video_file_name)
+
+    if input_video_file_name is None:
+        raise ValueError("input_video_file_name is None")
+
+    print(os.path.splitext(input_video_file_name)[0])
 
     output_video_s3_path = f"{os.path.splitext(input_video_file_name)[0]}_output{os.path.splitext(input_video_file_name)[1]}"
+
+    print(output_video_s3_path)
+
+    print(output_video_local_path)
+    print(BUCKET_NAME)
+    print(output_video_s3_path)
+
     s3.upload_file(
         output_video_local_path, BUCKET_NAME, output_video_s3_path
     )  # Upload the output video
@@ -110,17 +132,25 @@ def remove_silence(
         f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
     )
 
+    shutil.rmtree(temp_dir)
+
     return output_video_s3_url
 
 
 @app.post("/remove-silence/")
 async def remove_silence_route(item: VideoItem):
+    logging.info("Starting process to remove silence.")
     input_video_url = item.input_video  # Changed variable name to represent any URL
+
+    if input_video_url is None:
+        logging.error("input_video_url is None.")
+        raise HTTPException(status_code=400, detail="input_video_url is None.")
 
     try:
         output_video_s3_url = remove_silence(input_video_url)  # Changed to pass any URL
         return {"output_video": output_video_s3_url}
     except Exception as e:
+        logging.error(f"An error occurred: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
