@@ -14,7 +14,18 @@ from pydub.silence import detect_nonsilent
 
 app = FastAPI()
 
-s3 = boto3.client("s3")
+# Set the S3 credentials and config from environment variables
+ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
+SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+BUCKET_NAME = os.environ.get("BUCKET_NAME")
+REGION_NAME = os.environ.get("REGION_NAME")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=ACCESS_KEY,
+    aws_secret_access_key=SECRET_KEY,
+    region_name=REGION_NAME,
+)
 
 
 class VideoItem(BaseModel):
@@ -91,12 +102,12 @@ def remove_silence(
 
     output_video_s3_path = f"{os.path.splitext(input_video_file_name)[0]}_output{os.path.splitext(input_video_file_name)[1]}"
     s3.upload_file(
-        output_video_local_path, "videosilvids", output_video_s3_path
+        output_video_local_path, BUCKET_NAME, output_video_s3_path
     )  # Upload the output video
 
     # Construct the output video S3 URL
     output_video_s3_url = (
-        f"https://videosilvids.s3.amazonaws.com/{output_video_s3_path}"
+        f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
     )
 
     return output_video_s3_url
