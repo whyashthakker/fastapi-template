@@ -169,9 +169,31 @@ def process_video(input_video_url, email, unique_uuid):
             input_video_url, unique_uuid
         )  # Changed to pass any URL and unique_uuid
         send_email(email, output_video_s3_url)
+        trigger_webhook(
+            unique_uuid, output_video_s3_url
+        )  # Trigger the webhook after email is sent
+
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def trigger_webhook(unique_uuid, output_video_s3_url):
+    webhook_url = f"{NEXT_APP_URL}/api/webhook"
+    payload = {"uuid": unique_uuid, "output_video_url": output_video_s3_url}
+    headers = {"Content-Type": "application/json"}
+    try:
+        response = requests.post(webhook_url, json=payload, headers=headers)
+        response.raise_for_status()
+        print(f"Webhook triggered for UUID: {unique_uuid}")
+    except requests.exceptions.HTTPError as errh:
+        print(f"HTTP Error: {errh}")
+    except requests.exceptions.ConnectionError as errc:
+        print(f"Error Connecting: {errc}")
+    except requests.exceptions.Timeout as errt:
+        print(f"Timeout Error: {errt}")
+    except requests.exceptions.RequestException as err:
+        print(f"Oops: Something went wrong {err}")
 
 
 @app.post("/remove-silence/")
