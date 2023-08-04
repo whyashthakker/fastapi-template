@@ -13,10 +13,10 @@ from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 import logging
+import sib_api_v3_sdk
 from sib_api_v3_sdk import Configuration, ApiClient, CreateEmailCampaign
 from sib_api_v3_sdk.api.email_campaigns_api import EmailCampaignsApi
 from sib_api_v3_sdk.rest import ApiException
-
 
 app = FastAPI()
 
