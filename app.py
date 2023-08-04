@@ -16,6 +16,8 @@ import logging
 import smtplib
 from email.message import EmailMessage
 import ssl
+import uuid
+from uuid import uuid4
 
 app = FastAPI()
 
@@ -71,7 +73,8 @@ def send_email(email, video_url):
 
 
 def remove_silence(
-    input_video_url,  # Changed variable name to represent any URL
+    input_video_url,
+    unique_uuid,
     silence_threshold=-35,
     min_silence_duration=300,
     padding=200,
@@ -142,7 +145,9 @@ def remove_silence(
         logging.error("input_video_url is None.")
         raise HTTPException(status_code=400, detail="input_video_url is None.")
 
-    output_video_s3_path = f"{os.path.splitext(input_video_file_name)[0]}_output{os.path.splitext(input_video_file_name)[1]}"
+    output_video_s3_path = (
+        f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
+    )
 
     s3.upload_file(
         output_video_local_path, BUCKET_NAME, output_video_s3_path
@@ -155,12 +160,14 @@ def remove_silence(
 
     shutil.rmtree(temp_dir)
 
-    return output_video_s3_url
+    return output_video_s3_url, unique_uuid
 
 
-def process_video(input_video_url, email):
+def process_video(input_video_url, email, unique_uuid):
     try:
-        output_video_s3_url = remove_silence(input_video_url)  # Changed to pass any URL
+        output_video_s3_url = remove_silence(
+            input_video_url, unique_uuid
+        )  # Changed to pass any URL and unique_uuid
         send_email(email, output_video_s3_url)
     except Exception as e:
         logging.error(f"An error occurred: {e}")
@@ -177,9 +184,12 @@ async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTask
         logging.error("input_video_url is None.")
         raise HTTPException(status_code=400, detail="input_video_url is None.")
 
+    unique_uuid = str(uuid4())  # Generate unique UUID
+
     # Adding the task to the background
-    background_tasks.add_task(process_video, input_video_url, email)
+    background_tasks.add_task(process_video, input_video_url, email, unique_uuid)
 
     return {
-        "detail": "Video processing started. You will be notified by email once it's done."
+        "status": "Video processing started. You will be notified by email once it's done.",
+        "request_id": unique_uuid,  # Return the unique UUID
     }
