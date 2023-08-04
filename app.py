@@ -13,10 +13,11 @@ from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 import logging
-import time
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
-from pprint import pprint
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.message import EmailMessage
+import ssl
 
 app = FastAPI()
 
@@ -48,32 +49,33 @@ def download_file(url, dest_path):
 
 
 def send_email(email, video_url):
-    sib_api_v3_sdk.Configuration.api_key[
-        "api-key"
-    ] = "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"
-    api_instance = sib_api_v3_sdk.EmailCampaignsApi()
+    sender = os.environ.get("email_sender")
+    password = os.environ.get("email_password")
+    receiver = email
 
-    api_instance = EmailCampaignsApi()
+    subject = "Your processed video is ready!"
 
-    email_campaigns = sib_api_v3_sdk.CreateEmailCampaign(
-        name="Campaign sent via the API",
-        subject="My subject",
-        sender={"name": "From name", "email": email},
-        type="classic",
-        # Content that will be sent\
-        html_content=f'<p>Your processed video is ready! You can download it from <a href="{video_url}">here</a>.</p>',  # Select the recipients\
-        recipients={"listIds": [2, 7]},
-        # Schedule the sending in one hour\
-        scheduled_at="2018-01-01 00:00:01",
-    )
-    # Make the call to the client\
-    try:
-        api_response = api_instance.create_email_campaign(email_campaigns)
-        pprint(api_response)
-    except ApiException as e:
-        print(
-            "Exception when calling EmailCampaignsApi->create_email_campaign: %s\n" % e
-        )
+    body = f"Your processed video is ready! You can download it from {video_url}"
+
+    message = EmailMessage()
+
+    message["From"] = sender
+    message["To"] = email
+    message["Subject"] = subject
+
+    message.set_content(body)
+
+    context = ssl.create_default_context()
+
+    print("lets dance")
+
+    print(sender, password, receiver, message.as_string())
+
+    print("tada")
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
+        smtp.login(sender, password)
+        smtp.sendmail(sender, receiver, message.as_string())
 
 
 def remove_silence(
