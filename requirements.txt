@@ -6,3 +6,4 @@ requests
 moviepy
 pydub
 numpy
+sib-api-v3-sdk

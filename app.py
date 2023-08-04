@@ -12,6 +12,11 @@ from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 import logging
+import uuid
+from sib_api_v3_sdk import ApiClient, Configuration, ApiException
+from sib_api_v3_sdk.api.smtp_api import SMTPApi
+from sib_api_v3_sdk.models.send_smtp_email import SendSmtpEmail
+
 
 app = FastAPI()
 
@@ -31,6 +36,7 @@ s3 = boto3.client(
 
 class VideoItem(BaseModel):
     input_video: str  # This should be a URL
+    email: str
 
 
 def download_file(url, dest_path):
@@ -41,12 +47,31 @@ def download_file(url, dest_path):
                 f.write(chunk)
 
 
+def send_email(email, video_url):
+    configuration = Configuration()
+    configuration.api_key["api-key"] = "YOUR_SENDINBLUE_API_KEY"
+
+    api_instance = SMTPApi(ApiClient(configuration))
+
+    send_smtp_email = SendSmtpEmail(
+        to=[{"email": email}],
+        subject="Your video is ready!",
+        html_content=f'<p>Your processed video is ready! You can download it from <a href="{video_url}">here</a>.</p>',
+        sender={"name": "Video Processor", "email": "info@example.com"},
+    )
+
+    try:
+        api_response = api_instance.send_transac_email(send_smtp_email)
+        print(api_response)
+    except ApiException as e:
+        print(f"Exception when calling SMTPApi->send_transac_email: {e}\n")
+
+
 def remove_silence(
     input_video_url,  # Changed variable name to represent any URL
     silence_threshold=-35,
     min_silence_duration=300,
     padding=200,
-    progress_callback=None,
 ):
     logging.info(f"Starting to remove silence from video: {input_video_url}.")
     input_video_file_name = os.path.basename(input_video_url)
@@ -111,17 +136,10 @@ def remove_silence(
     print(input_video_file_name)
 
     if input_video_file_name is None:
-        raise ValueError("input_video_file_name is None")
-
-    print(os.path.splitext(input_video_file_name)[0])
+        logging.error("input_video_url is None.")
+        raise HTTPException(status_code=400, detail="input_video_url is None.")
 
     output_video_s3_path = f"{os.path.splitext(input_video_file_name)[0]}_output{os.path.splitext(input_video_file_name)[1]}"
-
-    print(output_video_s3_path)
-
-    print(output_video_local_path)
-    print(BUCKET_NAME)
-    print(output_video_s3_path)
 
     s3.upload_file(
         output_video_local_path, BUCKET_NAME, output_video_s3_path
@@ -141,6 +159,7 @@ def remove_silence(
 async def remove_silence_route(item: VideoItem):
     logging.info("Starting process to remove silence.")
     input_video_url = item.input_video  # Changed variable name to represent any URL
+    email = item.email  # User's email
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
@@ -148,6 +167,7 @@ async def remove_silence_route(item: VideoItem):
 
     try:
         output_video_s3_url = remove_silence(input_video_url)  # Changed to pass any URL
+        send_email(email, output_video_s3_url)
         return {"output_video": output_video_s3_url}
     except Exception as e:
         logging.error(f"An error occurred: {e}")
