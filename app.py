@@ -13,10 +13,10 @@ from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 import logging
+import time
 import sib_api_v3_sdk
-from sib_api_v3_sdk import Configuration, ApiClient, CreateEmailCampaign
-from sib_api_v3_sdk.api.email_campaigns_api import EmailCampaignsApi
 from sib_api_v3_sdk.rest import ApiException
+from pprint import pprint
 
 app = FastAPI()
 
@@ -51,25 +51,29 @@ def send_email(email, video_url):
     sib_api_v3_sdk.configuration.api_key["api-key"] = os.environ.get(
         "SENDINBLUE_API_KEY"
     )
+    api_instance = sib_api_v3_sdk.EmailCampaignsApi()
 
     api_instance = EmailCampaignsApi()
 
-    create_email_campaign = CreateEmailCampaign(
-        name="Video Processing Result",
-        subject="Your video is ready!",
-        sender={"name": "Video Processor", "email": "[Email]"},
+    email_campaigns = sib_api_v3_sdk.CreateEmailCampaign(
+        name="Campaign sent via the API",
+        subject="My subject",
+        sender={"name": "From name", "email": email},
         type="classic",
-        html_content=f'<p>Your processed video is ready! You can download it from <a href="{video_url}">here</a>.</p>',
-        recipients={
-            "listIds": [2, 7]
-        },  # You need to replace these with your actual listIds
+        # Content that will be sent\
+        html_content=f'<p>Your processed video is ready! You can download it from <a href="{video_url}">here</a>.</p>',  # Select the recipients\
+        recipients={"listIds": [2, 7]},
+        # Schedule the sending in one hour\
+        scheduled_at="2018-01-01 00:00:01",
     )
-
+    # Make the call to the client\
     try:
-        api_response = api_instance.create_email_campaign(create_email_campaign)
-        print(api_response)
+        api_response = api_instance.create_email_campaign(email_campaigns)
+        pprint(api_response)
     except ApiException as e:
-        print(f"Exception when calling EmailCampaignsApi->create_email_campaign: {e}\n")
+        print(
+            "Exception when calling EmailCampaignsApi->create_email_campaign: %s\n" % e
+        )
 
 
 def remove_silence(
