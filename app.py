@@ -1,7 +1,7 @@
 from __future__ import print_function
 import requests
 import boto3
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 import sys
 import os
@@ -14,8 +14,6 @@ from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 import logging
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from email.message import EmailMessage
 import ssl
 
@@ -66,12 +64,6 @@ def send_email(email, video_url):
     message.set_content(body)
 
     context = ssl.create_default_context()
-
-    print("lets dance")
-
-    print(sender, password, receiver, message.as_string())
-
-    print("tada")
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
         smtp.login(sender, password)
@@ -166,8 +158,17 @@ def remove_silence(
     return output_video_s3_url
 
 
+def process_video(input_video_url, email):
+    try:
+        output_video_s3_url = remove_silence(input_video_url)  # Changed to pass any URL
+        send_email(email, output_video_s3_url)
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/remove-silence/")
-async def remove_silence_route(item: VideoItem):
+async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTasks):
     logging.info("Starting process to remove silence.")
     input_video_url = item.input_video  # Changed variable name to represent any URL
     email = item.email  # User's email
@@ -176,15 +177,9 @@ async def remove_silence_route(item: VideoItem):
         logging.error("input_video_url is None.")
         raise HTTPException(status_code=400, detail="input_video_url is None.")
 
-    try:
-        output_video_s3_url = remove_silence(input_video_url)  # Changed to pass any URL
-        send_email(email, output_video_s3_url)
-        return {"output_video": output_video_s3_url}
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Adding the task to the background
+    background_tasks.add_task(process_video, input_video_url, email)
 
-
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run(app, host="0.0.0.0", port=8000)
+    return {
+        "detail": "Video processing started. You will be notified by email once it's done."
+    }
