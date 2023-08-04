@@ -1,3 +1,4 @@
+from __future__ import print_function
 import requests
 import boto3
 from fastapi import FastAPI, HTTPException
@@ -12,10 +13,9 @@ from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 import logging
-import uuid
-from sib_api_v3_sdk import ApiClient, Configuration, ApiException
-from sib_api_v3_sdk.api.smtp_api import SMTPApi
-from sib_api_v3_sdk.models.send_smtp_email import SendSmtpEmail
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from sib_api_v3_sdk.models import SendSmtpEmail
 
 
 app = FastAPI()
@@ -48,16 +48,16 @@ def download_file(url, dest_path):
 
 
 def send_email(email, video_url):
-    configuration = Configuration()
+    configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key["api-key"] = "YOUR_SENDINBLUE_API_KEY"
 
-    api_instance = SMTPApi(ApiClient(configuration))
+    api_instance = sib_api_v3_sdk.SMTPApi(sib_api_v3_sdk.ApiClient(configuration))
 
     send_smtp_email = SendSmtpEmail(
         to=[{"email": email}],
         subject="Your video is ready!",
         html_content=f'<p>Your processed video is ready! You can download it from <a href="{video_url}">here</a>.</p>',
-        sender={"name": "Video Processor", "email": "info@example.com"},
+        sender={"name": "Video Processor", "email": "[Email]"},
     )
 
     try:
