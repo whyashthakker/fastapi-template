@@ -48,9 +48,9 @@ def download_file(url, dest_path):
 
 
 def send_email(email, video_url):
-    sib_api_v3_sdk.configuration.api_key["api-key"] = os.environ.get(
-        "SENDINBLUE_API_KEY"
-    )
+    sib_api_v3_sdk.configuration.api_key[
+        "api-key"
+    ] = "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"
     api_instance = sib_api_v3_sdk.EmailCampaignsApi()
 
     api_instance = EmailCampaignsApi()
