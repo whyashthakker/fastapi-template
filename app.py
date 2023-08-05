@@ -74,7 +74,7 @@ def send_email(email, video_url):
 def remove_silence(
     input_video_url,
     unique_uuid,
-    silence_threshold=-37,
+    silence_threshold=-36,
     min_silence_duration=300,
     padding=300,
 ):
