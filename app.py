@@ -16,7 +16,6 @@ import logging
 import smtplib
 from email.message import EmailMessage
 import ssl
-import uuid
 from uuid import uuid4
 
 app = FastAPI()
@@ -179,7 +178,7 @@ def process_video(input_video_url, email, unique_uuid):
 
 
 def trigger_webhook(unique_uuid, output_video_s3_url):
-    webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/webhook'
+    webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
     payload = {"uuid": unique_uuid, "output_video_url": output_video_s3_url}
     headers = {"Content-Type": "application/json"}
     try:
