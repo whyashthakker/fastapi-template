@@ -74,9 +74,9 @@ def send_email(email, video_url):
 def remove_silence(
     input_video_url,
     unique_uuid,
-    silence_threshold=-35,
-    min_silence_duration=300,
-    padding=200,
+    silence_threshold=-40,
+    min_silence_duration=250,
+    padding=250,
 ):
     logging.info(f"Starting to remove silence from video: {input_video_url}.")
     input_video_file_name = os.path.basename(input_video_url)
