@@ -3,7 +3,6 @@ import requests
 import boto3
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
-import sys
 import os
 import tempfile
 import shutil
@@ -17,6 +16,7 @@ import smtplib
 from email.message import EmailMessage
 import ssl
 from uuid import uuid4
+from typing import Optional
 
 app = FastAPI()
 
@@ -35,8 +35,11 @@ s3 = boto3.client(
 
 
 class VideoItem(BaseModel):
-    input_video: str  # This should be a URL
+    input_video: str
     email: str
+    silence_threshold: Optional[float] = -36
+    min_silence_duration: Optional[int] = 300
+    padding: Optional[int] = 300
 
 
 def download_file(url, dest_path):
@@ -157,20 +160,31 @@ def remove_silence(
         f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
     )
 
+    print(output_video_s3_url)
+
     shutil.rmtree(temp_dir)
 
     return output_video_s3_url, unique_uuid
 
 
-def process_video(input_video_url, email, unique_uuid):
+def process_video(
+    input_video_url,
+    email,
+    unique_uuid,
+    silence_threshold=-36,
+    min_silence_duration=300,
+    padding=300,
+):
     try:
-        output_video_s3_url = remove_silence(
-            input_video_url, unique_uuid
-        )  # Changed to pass any URL and unique_uuid
+        output_video_s3_url, _ = remove_silence(
+            input_video_url,
+            unique_uuid,
+            silence_threshold,
+            min_silence_duration,
+            padding,
+        )
         send_email(email, output_video_s3_url)
-        trigger_webhook(
-            unique_uuid, output_video_s3_url
-        )  # Trigger the webhook after email is sent
+        trigger_webhook(unique_uuid, output_video_s3_url)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
@@ -198,19 +212,30 @@ def trigger_webhook(unique_uuid, output_video_s3_url):
 @app.post("/remove-silence/")
 async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTasks):
     logging.info("Starting process to remove silence.")
-    input_video_url = item.input_video  # Changed variable name to represent any URL
-    email = item.email  # User's email
+    input_video_url = item.input_video
+    email = item.email
+    silence_threshold = item.silence_threshold
+    min_silence_duration = item.min_silence_duration
+    padding = item.padding
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
         raise HTTPException(status_code=400, detail="input_video_url is None.")
 
-    unique_uuid = str(uuid4())  # Generate unique UUID
+    unique_uuid = str(uuid4())
 
-    # Adding the task to the background
-    background_tasks.add_task(process_video, input_video_url, email, unique_uuid)
+    # Pass the optional parameters to the background task
+    background_tasks.add_task(
+        process_video,
+        input_video_url,
+        email,
+        unique_uuid,
+        silence_threshold,
+        min_silence_duration,
+        padding,
+    )
 
     return {
         "status": "Video processing started. You will be notified by email once it's done.",
-        "request_id": unique_uuid,  # Return the unique UUID
+        "request_id": unique_uuid,
     }
