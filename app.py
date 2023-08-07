@@ -175,20 +175,39 @@ def process_video(
     min_silence_duration=300,
     padding=300,
 ):
-    try:
-        output_video_s3_url, _ = remove_silence(
-            input_video_url,
-            unique_uuid,
-            silence_threshold,
-            min_silence_duration,
-            padding,
-        )
-        send_email(email, output_video_s3_url)
-        trigger_webhook(unique_uuid, output_video_s3_url)
+    attempts = 0
+    max_attempts = 3
+    threshold_increment = -5
 
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    while attempts < max_attempts:
+        try:
+            output_video_s3_url, _ = remove_silence(
+                input_video_url,
+                unique_uuid,
+                silence_threshold,
+                min_silence_duration,
+                padding,
+            )
+            send_email(email, output_video_s3_url)
+            trigger_webhook(unique_uuid, output_video_s3_url)
+            return  # Success, so return from the function
+
+        except Exception as e:
+            # If nonsilent_ranges error, try increasing the threshold
+            if str(e) == "nonsilent_ranges is None or empty.":
+                attempts += 1
+                silence_threshold += threshold_increment
+                logging.warning(
+                    f"Adjusting silence threshold to {silence_threshold}. Attempt {attempts}/{max_attempts}."
+                )
+            else:
+                # If it's a different kind of error, break out of the loop
+                break
+
+    logging.error(f"Failed to process video after {max_attempts} attempts.")
+    raise HTTPException(
+        status_code=500, detail="No audio found after multiple attempts."
+    )
 
 
 def trigger_webhook(unique_uuid, output_video_s3_url):
