@@ -17,6 +17,8 @@ from email.message import EmailMessage
 import ssl
 from uuid import uuid4
 from typing import Optional
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = FastAPI()
 
@@ -57,15 +59,38 @@ def send_email(email, video_url):
 
     subject = "Your processed video is ready!"
 
-    body = f"Your processed video is ready! You can download it from {video_url}"
+    # Email body with HTML
+    body = f"""
+    <html>
+        <body>
+            <h2>🎉 Your Processed Video is Ready! 🎉</h2>
+            
+            <p>Thank you for using VideoSilenceRemover! Your video has been processed successfully. You can:</p>
+            
+            <ul>
+                <li><a href="{video_url}">Download your video</a></li>
+                <li>Check the job status and download from your <a href="https://app.videosilenceremover.com/dashboard">dashboard</a></li>
+                <li>Want to process another video? <a href="https://app.videosilenceremover.com/video-silence-remover">Upload another video</a></li>
+            </ul>
+            
+            <p>If you have any questions, feel free to reach out to our <a href="mailto:support@videosilenceremover.com">support team</a>.</p>
+            
+            <p>Warm Regards,</p>
+            <p>VideoSilenceRemover Team</p>
+        </body>
+    </html>
+    """
 
-    message = EmailMessage()
-
+    message = MIMEMultipart("alternative")
     message["From"] = sender
     message["To"] = email
     message["Subject"] = subject
 
-    message.set_content(body)
+    # Convert the body from string to MIMEText object
+    mime_body = MIMEText(body, "html")
+
+    # Attach the MIMEText object to the message
+    message.attach(mime_body)
 
     context = ssl.create_default_context()
 
