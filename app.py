@@ -254,6 +254,7 @@ def process_video(
             )
             trigger_webhook(unique_uuid, output_video_s3_url)
             send_email(email, output_video_s3_url)
+            logging.info(f"Finished processing video: {input_video_url}.")
             return
 
         except Exception as e:
