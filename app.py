@@ -82,14 +82,11 @@ def get_unique_filename(original_name: str) -> str:
 def send_email(email, video_url):
     try:
         logging.info(f"Sending email to {email} with video URL {video_url}")
-        print("sending email")
         sender = os.environ.get("email_sender")
         password = os.environ.get("email_password")
         receiver = email
 
         subject = "Your processed video is ready!"
-
-        print("creating message")
 
         # Email body with HTML
         body = f"""
@@ -118,21 +115,13 @@ def send_email(email, video_url):
         message["To"] = email
         message["Subject"] = subject
 
-        print("attaching body")
-
         # Convert the body from string to MIMEText object
         mime_body = MIMEText(body, "html")
-
-        print("attaching mime body")
 
         # Attach the MIMEText object to the message
         message.attach(mime_body)
 
-        print("creating context")
-
         context = ssl.create_default_context()
-
-        print("creating smtp")
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
             smtp.login(sender, password)
@@ -154,24 +143,18 @@ def remove_silence(
         logging.info(f"Starting to remove silence from video: {input_video_url}.")
 
         original_name = os.path.basename(input_video_url)
-        print(f"Original name: {original_name}")
 
         input_video_local_path = os.path.join(temp_dir, original_name)
-        print(f"Input video local path: {input_video_local_path}")
 
         download_file(input_video_url, input_video_local_path)
-        print("Downloaded video file to local.")
 
         input_video_file_name = get_unique_filename(original_name)
-        print(f"Unique name: {input_video_file_name}")
 
         # Rename the downloaded file to the unique name
         unique_video_local_path = os.path.join(temp_dir, input_video_file_name)
         os.rename(input_video_local_path, unique_video_local_path)
-        print(f"Renamed to unique name: {unique_video_local_path}")
 
         os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
-        print(f"Set MOVIEPY_TEMP_FOLDER to {temp_dir}")
 
         video = VideoFileClip(unique_video_local_path)
 
@@ -206,8 +189,6 @@ def remove_silence(
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
-        print(temp_audiofile_path)
-
         final_video.write_videofile(temp_videofile_path, codec="libx264", audio=False)
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
@@ -221,8 +202,6 @@ def remove_silence(
         subprocess.run(cmd, shell=True, check=True)
 
         video.close()
-
-        print(input_video_file_name)
 
         # if input_video_file_name is None:
         #     logging.error("input_video_url is None.")
@@ -239,16 +218,8 @@ def remove_silence(
         # Construct the output video S3 URL
         output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
 
-        print(output_video_s3_url)
-
-        print("Uploaded output video to S3.")
-
         if os.path.exists(temp_dir):
-            print("Removing temp dir.")
             shutil.rmtree(temp_dir)
-            print("Removed temp dir.")
-
-        print(output_video_s3_url, unique_uuid)
 
         return output_video_s3_url, unique_uuid
 
@@ -301,25 +272,15 @@ def process_video(
     # )
 
 
-def trigger_webhook(unique_uuid, output_video_s3_url):
+def trigger_webhook(unique_uuid, output_video_s3_url, error_message=None):
     try:
         webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
         payload = {"uuid": unique_uuid, "output_video_url": output_video_s3_url}
+        if error_message:
+            payload["error_message"] = error_message
         headers = {"Content-Type": "application/json"}
-        try:
-            response = requests.post(webhook_url, json=payload, headers=headers)
-            response.raise_for_status()
-            print(f"Webhook triggered for UUID: {unique_uuid}")
-        except requests.exceptions.HTTPError as errh:
-            print(f"HTTP Error: {errh}")
-        except requests.exceptions.ConnectionError as errc:
-            print(f"Error Connecting: {errc}")
-        except requests.exceptions.Timeout as errt:
-            print(f"Timeout Error: {errt}")
-        except requests.exceptions.RequestException as err:
-            print(f"Oops: Something went wrong {err}")
-
-            logging.info(f"Webhook triggered successfully for UUID: {unique_uuid}")
+        response = requests.post(webhook_url, json=payload, headers=headers)
+        response.raise_for_status()
     except requests.RequestException as e:
         logging.error(f"Webhook trigger failed for UUID {unique_uuid}. Error: {str(e)}")
 
@@ -327,7 +288,6 @@ def trigger_webhook(unique_uuid, output_video_s3_url):
 # 4. FastAPI Routes
 @app.post("/remove-silence/")
 async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTasks):
-    # try:
     input_video_url = item.input_video
     email = item.email
     silence_threshold = item.silence_threshold
@@ -336,12 +296,15 @@ async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTask
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
-        raise HTTPException(status_code=400, detail="Please share a valid video URL.")
+        trigger_webhook(None, None, error_message="Please share a valid video URL.")
+        return {
+            "status": "Failed to initiate video processing. Please share a valid video URL.",
+            "error_message": "Please share a valid video URL.",
+        }
 
     unique_uuid = str(uuid4())
     temp_dir = tempfile.mkdtemp()
 
-    # Pass the optional parameters to the background task
     try:
         background_tasks.add_task(
             process_video,
@@ -353,6 +316,13 @@ async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTask
             min_silence_duration,
             padding,
         )
+    except Exception as e:
+        logging.error(f"Failed to initiate video processing. Error: {str(e)}")
+        trigger_webhook(unique_uuid, None, error_message=str(e))
+        return {
+            "status": "Failed to initiate video processing.",
+            "error_message": str(e),
+        }
     finally:
         # Cleanup temp_dir
         if os.path.exists(temp_dir):
