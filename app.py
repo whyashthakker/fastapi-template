@@ -1,25 +1,30 @@
 from __future__ import print_function
-import requests
-import boto3
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+
+# Standard libraries
 import os
 import tempfile
 import shutil
 import subprocess
+import logging
+import smtplib
+import ssl
+from uuid import uuid4
+from email.message import EmailMessage
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from typing import Optional
+
+# Third-party libraries
+import requests
+import boto3
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.compositing.concatenate import concatenate_videoclips
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
-import logging
-import smtplib
-from email.message import EmailMessage
-import ssl
-from uuid import uuid4
-from typing import Optional
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
+# Initialize FastAPI app
 app = FastAPI()
 
 # Set the S3 credentials and config from environment variables
@@ -36,6 +41,9 @@ s3 = boto3.client(
 )
 
 
+# 3. Utility Functions
+
+
 class VideoItem(BaseModel):
     input_video: str
     email: str
@@ -45,161 +53,220 @@ class VideoItem(BaseModel):
 
 
 def download_file(url, dest_path):
-    r = requests.get(url, stream=True)
-    if r.status_code == 200:
+    try:
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+
+        logging.info(f"Downloading file from {url} to {dest_path}")
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
         with open(dest_path, "wb") as f:
             for chunk in r.iter_content(1024):
                 f.write(chunk)
+    except requests.RequestException as e:
+        logging.error(f"Error downloading file from {url}. Error: {str(e)}")
+        raise
+
+
+def get_unique_filename(original_name: str) -> str:
+    try:
+        unique_filename = f"{uuid4()}{os.path.splitext(original_name)[1]}"
+        return unique_filename
+    except Exception as e:
+        logging.error(
+            f"Error generating unique filename for {original_name}. Error: {str(e)}"
+        )
+        raise
 
 
 def send_email(email, video_url):
-    sender = os.environ.get("email_sender")
-    password = os.environ.get("email_password")
-    receiver = email
+    try:
+        logging.info(f"Sending email to {email} with video URL {video_url}")
+        print("sending email")
+        sender = os.environ.get("email_sender")
+        password = os.environ.get("email_password")
+        receiver = email
 
-    subject = "Your processed video is ready!"
+        subject = "Your processed video is ready!"
 
-    # Email body with HTML
-    body = f"""
-    <html>
-        <body>
-            <h2>🎉 Your Processed Video is Ready! 🎉</h2>
-            
-            <p>Thank you for using VideoSilenceRemover! Your video has been processed successfully. You can:</p>
-            
-            <ul>
-                <li><a href="{video_url}">Download your video</a></li>
-                <li>Check the job status and download from your <a href="https://app.videosilenceremover.com/dashboard">dashboard</a></li>
-                <li>Want to process another video? <a href="https://app.videosilenceremover.com/video-silence-remover">Upload another video</a></li>
-            </ul>
-            
-            <p>If you have any questions, feel free to reach out to our <a href="mailto:support@videosilenceremover.com">support team</a>.</p>
-            
-            <p>Warm Regards,</p>
-            <p>VideoSilenceRemover Team</p>
-        </body>
-    </html>
-    """
+        print("creating message")
 
-    message = MIMEMultipart("alternative")
-    message["From"] = sender
-    message["To"] = email
-    message["Subject"] = subject
+        # Email body with HTML
+        body = f"""
+        <html>
+            <body>
+                <h2>🎉 Your Processed Video is Ready! 🎉</h2>
+                
+                <p>Thank you for using VideoSilenceRemover! Your video has been processed successfully. You can:</p>
+                
+                <ul>
+                    <li><a href="{video_url}">Download your video</a></li>
+                    <li>Check the job status and download from your <a href="https://app.videosilenceremover.com/dashboard">dashboard</a></li>
+                    <li>Want to process another video? <a href="https://app.videosilenceremover.com/video-silence-remover">Upload another video</a></li>
+                </ul>
+                
+                <p>If you have any questions, feel free to reach out to our <a href="mailto:support@videosilenceremover.com">support team</a>.</p>
+                
+                <p>Warm Regards,</p>
+                <p>VideoSilenceRemover Team</p>
+            </body>
+        </html>
+        """
 
-    # Convert the body from string to MIMEText object
-    mime_body = MIMEText(body, "html")
+        message = MIMEMultipart("alternative")
+        message["From"] = sender
+        message["To"] = email
+        message["Subject"] = subject
 
-    # Attach the MIMEText object to the message
-    message.attach(mime_body)
+        print("attaching body")
 
-    context = ssl.create_default_context()
+        # Convert the body from string to MIMEText object
+        mime_body = MIMEText(body, "html")
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
-        smtp.login(sender, password)
-        smtp.sendmail(sender, receiver, message.as_string())
+        print("attaching mime body")
+
+        # Attach the MIMEText object to the message
+        message.attach(mime_body)
+
+        print("creating context")
+
+        context = ssl.create_default_context()
+
+        print("creating smtp")
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
+            smtp.login(sender, password)
+            smtp.sendmail(sender, receiver, message.as_string())
+    except smtplib.SMTPException as e:
+        logging.error(f"Error sending email to {email}. Error: {str(e)}")
+        raise
 
 
 def remove_silence(
+    temp_dir,
     input_video_url,
     unique_uuid,
     silence_threshold=-36,
     min_silence_duration=300,
     padding=300,
 ):
-    logging.info(f"Starting to remove silence from video: {input_video_url}.")
-    input_video_file_name = os.path.basename(input_video_url)
-    input_video_local_path = os.path.join(tempfile.gettempdir(), input_video_file_name)
+    try:
+        logging.info(f"Starting to remove silence from video: {input_video_url}.")
 
-    # Download the video file from any URL to local
-    download_file(
-        input_video_url, input_video_local_path
-    )  # Changed to use the new download function
+        original_name = os.path.basename(input_video_url)
+        print(f"Original name: {original_name}")
 
-    temp_dir = tempfile.mkdtemp()
-    os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
+        input_video_local_path = os.path.join(temp_dir, original_name)
+        print(f"Input video local path: {input_video_local_path}")
 
-    video = VideoFileClip(input_video_local_path)  # Use local path
-    audio = video.audio
+        download_file(input_video_url, input_video_local_path)
+        print("Downloaded video file to local.")
 
-    audio_file = os.path.join(temp_dir, "temp_audio.wav")
-    audio.write_audiofile(audio_file)
-    audio_segment = AudioSegment.from_file(audio_file)
+        input_video_file_name = get_unique_filename(original_name)
+        print(f"Unique name: {input_video_file_name}")
 
-    nonsilent_ranges = detect_nonsilent(
-        audio_segment,
-        min_silence_len=min_silence_duration,
-        silence_thresh=silence_threshold,
-    )
+        # Rename the downloaded file to the unique name
+        unique_video_local_path = os.path.join(temp_dir, input_video_file_name)
+        os.rename(input_video_local_path, unique_video_local_path)
+        print(f"Renamed to unique name: {unique_video_local_path}")
 
-    # Check if nonsilent_ranges is None or empty
-    if nonsilent_ranges is None or len(nonsilent_ranges) == 0:
-        logging.error("nonsilent_ranges is None or empty.")
-        raise Exception("nonsilent_ranges is None or empty.")
+        os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
+        print(f"Set MOVIEPY_TEMP_FOLDER to {temp_dir}")
 
-    nonsilent_ranges = [
-        (start - padding, end + padding) for start, end in nonsilent_ranges
-    ]
+        video = VideoFileClip(unique_video_local_path)
 
-    non_silent_subclips = [
-        video.subclip(max(start / 1000, 0), min(end / 1000, video.duration))
-        for start, end in nonsilent_ranges
-    ]
+        audio = video.audio
 
-    final_video = concatenate_videoclips(non_silent_subclips)
+        audio_file = os.path.join(temp_dir, "temp_audio.wav")
+        audio.write_audiofile(audio_file)
+        audio_segment = AudioSegment.from_file(audio_file)
 
-    temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
-    temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
+        nonsilent_ranges = detect_nonsilent(
+            audio_segment,
+            min_silence_len=min_silence_duration,
+            silence_thresh=silence_threshold,
+        )
 
-    print(temp_audiofile_path)
+        # Check if nonsilent_ranges is None or empty
+        if nonsilent_ranges is None or len(nonsilent_ranges) == 0:
+            logging.error("nonsilent_ranges is None or empty.")
+            raise Exception("nonsilent_ranges is None or empty.")
 
-    final_video.write_videofile(temp_videofile_path, codec="libx264", audio=False)
+        nonsilent_ranges = [
+            (start - padding, end + padding) for start, end in nonsilent_ranges
+        ]
 
-    audio_with_fps = final_video.audio.set_fps(video.audio.fps)
-    audio_with_fps.write_audiofile(temp_audiofile_path)
+        non_silent_subclips = [
+            video.subclip(max(start / 1000, 0), min(end / 1000, video.duration))
+            for start, end in nonsilent_ranges
+        ]
 
-    output_video_local_path = os.path.join(
-        temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
-    )  # Define output video local path
+        final_video = concatenate_videoclips(non_silent_subclips, method="compose")
 
-    cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}"'
-    subprocess.run(cmd, shell=True, check=True)
+        temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
+        temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
-    video.close()
+        print(temp_audiofile_path)
 
-    print(input_video_file_name)
+        final_video.write_videofile(temp_videofile_path, codec="libx264", audio=False)
 
-    if input_video_file_name is None:
-        logging.error("input_video_url is None.")
-        raise HTTPException(status_code=400, detail="input_video_url is None.")
+        audio_with_fps = final_video.audio.set_fps(video.audio.fps)
+        audio_with_fps.write_audiofile(temp_audiofile_path)
 
-    output_video_s3_path = (
-        f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
-    )
+        output_video_local_path = os.path.join(
+            temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
+        )  # Define output video local path
 
-    s3.upload_file(
-        output_video_local_path, BUCKET_NAME, output_video_s3_path
-    )  # Upload the output video
+        cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}"'
+        subprocess.run(cmd, shell=True, check=True)
 
-    # Construct the output video S3 URL
-    output_video_s3_url = (
-        f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
-    )
+        video.close()
 
-    print(output_video_s3_url)
+        print(input_video_file_name)
 
-    shutil.rmtree(temp_dir)
+        # if input_video_file_name is None:
+        #     logging.error("input_video_url is None.")
+        #     raise HTTPException(status_code=400, detail="input_video_url is None.")
 
-    return output_video_s3_url, unique_uuid
+        output_video_s3_path = (
+            f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
+        )
+
+        s3.upload_file(
+            output_video_local_path, BUCKET_NAME, output_video_s3_path
+        )  # Upload the output video
+
+        # Construct the output video S3 URL
+        output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
+
+        print(output_video_s3_url)
+
+        print("Uploaded output video to S3.")
+
+        if os.path.exists(temp_dir):
+            print("Removing temp dir.")
+            shutil.rmtree(temp_dir)
+            print("Removed temp dir.")
+
+        print(output_video_s3_url, unique_uuid)
+
+        return output_video_s3_url, unique_uuid
+
+    except Exception as e:
+        logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")
+        raise
 
 
 def process_video(
+    temp_dir,
     input_video_url,
     email,
     unique_uuid,
-    silence_threshold=-36,
+    silence_threshold=-30,
     min_silence_duration=300,
     padding=300,
 ):
+    logging.info(f"Starting to process video: {input_video_url}.")
     attempts = 0
     max_attempts = 3
     threshold_increment = -5
@@ -207,15 +274,16 @@ def process_video(
     while attempts < max_attempts:
         try:
             output_video_s3_url, _ = remove_silence(
+                temp_dir,
                 input_video_url,
                 unique_uuid,
                 silence_threshold,
                 min_silence_duration,
                 padding,
             )
-            send_email(email, output_video_s3_url)
             trigger_webhook(unique_uuid, output_video_s3_url)
-            return  # Success, so return from the function
+            send_email(email, output_video_s3_url)
+            return
 
         except Exception as e:
             # If nonsilent_ranges error, try increasing the threshold
@@ -226,36 +294,40 @@ def process_video(
                     f"Adjusting silence threshold to {silence_threshold}. Attempt {attempts}/{max_attempts}."
                 )
             else:
-                # If it's a different kind of error, break out of the loop
                 break
 
-    logging.error(f"Failed to process video after {max_attempts} attempts.")
-    raise HTTPException(
-        status_code=500, detail="No audio found after multiple attempts."
-    )
+    # raise HTTPException(
+    #     status_code=500, detail="No audio found after multiple attempts."
+    # )
 
 
 def trigger_webhook(unique_uuid, output_video_s3_url):
-    webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
-    payload = {"uuid": unique_uuid, "output_video_url": output_video_s3_url}
-    headers = {"Content-Type": "application/json"}
     try:
-        response = requests.post(webhook_url, json=payload, headers=headers)
-        response.raise_for_status()
-        print(f"Webhook triggered for UUID: {unique_uuid}")
-    except requests.exceptions.HTTPError as errh:
-        print(f"HTTP Error: {errh}")
-    except requests.exceptions.ConnectionError as errc:
-        print(f"Error Connecting: {errc}")
-    except requests.exceptions.Timeout as errt:
-        print(f"Timeout Error: {errt}")
-    except requests.exceptions.RequestException as err:
-        print(f"Oops: Something went wrong {err}")
+        webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
+        payload = {"uuid": unique_uuid, "output_video_url": output_video_s3_url}
+        headers = {"Content-Type": "application/json"}
+        try:
+            response = requests.post(webhook_url, json=payload, headers=headers)
+            response.raise_for_status()
+            print(f"Webhook triggered for UUID: {unique_uuid}")
+        except requests.exceptions.HTTPError as errh:
+            print(f"HTTP Error: {errh}")
+        except requests.exceptions.ConnectionError as errc:
+            print(f"Error Connecting: {errc}")
+        except requests.exceptions.Timeout as errt:
+            print(f"Timeout Error: {errt}")
+        except requests.exceptions.RequestException as err:
+            print(f"Oops: Something went wrong {err}")
+
+            logging.info(f"Webhook triggered successfully for UUID: {unique_uuid}")
+    except requests.RequestException as e:
+        logging.error(f"Webhook trigger failed for UUID {unique_uuid}. Error: {str(e)}")
 
 
+# 4. FastAPI Routes
 @app.post("/remove-silence/")
 async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTasks):
-    logging.info("Starting process to remove silence.")
+    # try:
     input_video_url = item.input_video
     email = item.email
     silence_threshold = item.silence_threshold
@@ -264,22 +336,34 @@ async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTask
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
-        raise HTTPException(status_code=400, detail="input_video_url is None.")
+        raise HTTPException(status_code=400, detail="Please share a valid video URL.")
 
     unique_uuid = str(uuid4())
+    temp_dir = tempfile.mkdtemp()
 
     # Pass the optional parameters to the background task
-    background_tasks.add_task(
-        process_video,
-        input_video_url,
-        email,
-        unique_uuid,
-        silence_threshold,
-        min_silence_duration,
-        padding,
-    )
+    try:
+        background_tasks.add_task(
+            process_video,
+            temp_dir,
+            input_video_url,
+            email,
+            unique_uuid,
+            silence_threshold,
+            min_silence_duration,
+            padding,
+        )
+    finally:
+        # Cleanup temp_dir
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
 
     return {
         "status": "Video processing started. You will be notified by email once it's done.",
         "request_id": unique_uuid,
     }
+
+
+# except Exception as e:
+#     logging.error(f"Failed to initiate video processing. Error: {str(e)}")
+#     raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
