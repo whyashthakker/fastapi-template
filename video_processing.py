@@ -1,5 +1,3 @@
-from moviepy.video.io.VideoFileClip import VideoFileClip
-from moviepy.video.compositing.concatenate import concatenate_videoclips
 from remove_silence import *
 from file_operations import *
 from communication import *
