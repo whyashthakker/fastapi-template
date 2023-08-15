@@ -95,10 +95,6 @@ def remove_silence(
 
         video.close()
 
-        # if input_video_file_name is None:
-        #     logging.error("input_video_url is None.")
-        #     raise HTTPException(status_code=400, detail="input_video_url is None.")
-
         output_video_s3_path = (
             f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
         )

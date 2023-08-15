@@ -7,3 +7,11 @@ test_file.py
 create_bucket.py
 file_upload.py
 list_buckets.py
+
+test
+
+myenv/
+
+procfile
+
+nixpacks.toml

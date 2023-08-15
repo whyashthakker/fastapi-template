@@ -1,8 +1,10 @@
+from celery_config import celery_app
 from remove_silence import *
 from file_operations import *
 from communication import *
 
 
+@celery_app.task(name="video_processing.process_video", queue="video_processing")
 def process_video(
     temp_dir,
     input_video_url,

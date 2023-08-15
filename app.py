@@ -7,6 +7,7 @@ import shutil
 import logging
 from uuid import uuid4
 from typing import Optional
+from celery import Celery
 
 # Third-party libraries
 
@@ -17,7 +18,7 @@ from pydantic import BaseModel
 from remove_silence import *
 from file_operations import *
 from communication import *
-from video_processing import *
+from video_processing import process_video
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -31,9 +32,17 @@ class VideoItem(BaseModel):
     padding: Optional[int] = 300
 
 
+class AudioItem(BaseModel):
+    input_audio: str
+    email: str
+    silence_threshold: Optional[float] = -36
+    min_silence_duration: Optional[int] = 300
+    padding: Optional[int] = 300
+
+
 # 4. FastAPI Routes
 @app.post("/remove-silence/")
-async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTasks):
+async def remove_silence_route(item: VideoItem):
     input_video_url = item.input_video
     email = item.email
     silence_threshold = item.silence_threshold
@@ -52,15 +61,16 @@ async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTask
     temp_dir = tempfile.mkdtemp()
 
     try:
-        background_tasks.add_task(
-            process_video,
-            temp_dir,
-            input_video_url,
-            email,
-            unique_uuid,
-            silence_threshold,
-            min_silence_duration,
-            padding,
+        process_video.apply_async(
+            (
+                temp_dir,
+                input_video_url,
+                email,
+                unique_uuid,
+                silence_threshold,
+                min_silence_duration,
+                padding,
+            )
         )
     except Exception as e:
         logging.error(f"Failed to initiate video processing. Error: {str(e)}")
@@ -78,3 +88,8 @@ async def remove_silence_route(item: VideoItem, background_tasks: BackgroundTask
         "status": "Video processing started. You will be notified by email once it's done.",
         "request_id": unique_uuid,
     }
+
+
+@app.post("/audio-silence/")
+async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTasks):
+    return "Removing silence from audio."
