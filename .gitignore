@@ -7,6 +7,7 @@ test_file.py
 create_bucket.py
 file_upload.py
 list_buckets.py
+old.py
 
 test
 

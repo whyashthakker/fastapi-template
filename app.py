@@ -40,7 +40,7 @@ class AudioItem(BaseModel):
     padding: Optional[int] = 300
 
 
-# 4. FastAPI Routes
+# 4. FastAPI Routes 1
 @app.post("/remove-silence/")
 async def remove_silence_route(item: VideoItem):
     input_video_url = item.input_video
