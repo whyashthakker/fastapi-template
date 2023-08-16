@@ -81,7 +81,16 @@ def remove_silence(
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
-        final_video.write_videofile(temp_videofile_path, codec="libx264", audio=False)
+        logging.info("Writing final video to temp file.")
+
+        final_video.write_videofile(
+            temp_videofile_path,
+            codec="libx264",
+            audio=False,
+            threads=3,
+            preset="ultrafast",
+            logger=None,
+        )
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
         audio_with_fps.write_audiofile(temp_audiofile_path)
