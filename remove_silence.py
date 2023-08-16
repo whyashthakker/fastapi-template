@@ -98,9 +98,7 @@ def remove_silence(
         logging.info(f"Writing final video to temp file for {unique_uuid}")
 
         final_video.write_videofile(
-            temp_videofile_path,
-            codec="libx264",
-            audio=False,
+            temp_videofile_path, codec="libx264", audio=False, threads=3
         )
 
         logging.info(f"Writing final audio to temp file for {unique_uuid}")
