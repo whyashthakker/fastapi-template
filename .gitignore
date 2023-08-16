@@ -13,6 +13,8 @@ test
 
 myenv/
 
+s3-experiments/
+
 procfile
 
 nixpacks.toml
