@@ -7,12 +7,13 @@ import shutil
 import logging
 from uuid import uuid4
 from typing import Optional
-from celery import Celery
+from dotenv import load_dotenv
 
 # Third-party libraries
 
 from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
+from fastapi import HTTPException, Header, Depends
 
 # Local libraries
 from remove_silence import *
@@ -22,6 +23,9 @@ from video_processing import process_video
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Load environment variables
+load_dotenv()
 
 
 class VideoItem(BaseModel):
@@ -40,9 +44,18 @@ class AudioItem(BaseModel):
     padding: Optional[int] = 300
 
 
+def verify_authorization_key(authorization_key: str = Header(...)):
+    CONFIGURED_KEYS = os.environ.get("AUTH_KEY")
+    if authorization_key not in CONFIGURED_KEYS:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return authorization_key
+
+
 # 4. FastAPI Routes 1
 @app.post("/remove-silence/")
-async def remove_silence_route(item: VideoItem):
+async def remove_silence_route(
+    item: VideoItem, authorization: str = Depends(verify_authorization_key)
+):
     input_video_url = item.input_video
     email = item.email
     silence_threshold = item.silence_threshold
