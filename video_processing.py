@@ -44,3 +44,8 @@ def process_video(
                 )
             else:
                 break
+
+
+@celery_app.task(name="video_processing.process_audio", queue="audio_test")
+def process_audio():
+    return "hello"

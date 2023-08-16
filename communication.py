@@ -5,6 +5,9 @@ import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def send_email(email, video_url):

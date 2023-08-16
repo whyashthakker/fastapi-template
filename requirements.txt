@@ -7,3 +7,4 @@ moviepy
 pydub
 numpy
 celery
+python-dotenv
