@@ -2,7 +2,7 @@ from celery import Celery
 from kombu import Exchange, Queue
 import os
 
-BROKER_URL = os.environ.get("AMQP_URL")
+BROKER_URL = os.environ.get("CLOUDAMQP_URL")
 RESULT_BACKEND = "rpc://"
 TASK_SERIALIZER = "json"
 RESULT_SERIALIZER = "json"
