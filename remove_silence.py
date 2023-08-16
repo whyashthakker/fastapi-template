@@ -56,7 +56,7 @@ def remove_silence(
         audio.write_audiofile(audio_file)
         audio_segment = AudioSegment.from_file(audio_file)
 
-        logging.info("Detecting nonsilent ranges for {unique_uuid}")
+        logging.info(f"Detecting nonsilent ranges for {unique_uuid}")
 
         nonsilent_ranges = detect_nonsilent(
             audio_segment,
@@ -69,29 +69,29 @@ def remove_silence(
             logging.error("nonsilent_ranges is None or empty.")
             raise Exception("nonsilent_ranges is None or empty.")
 
-        logging.info("Removing silence from video for {unique_uuid}")
+        logging.info(f"Removing silence from video for {unique_uuid}")
 
         nonsilent_ranges = [
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
 
-        logging.info("Concatenating nonsilent ranges for {unique_uuid}")
+        logging.info(f"Concatenating nonsilent ranges for {unique_uuid}")
 
         non_silent_subclips = [
             video.subclip(max(start / 1000, 0), min(end / 1000, video.duration))
             for start, end in nonsilent_ranges
         ]
 
-        logging.info("Concatenating final video for {unique_uuid}")
+        logging.info(f"Concatenating final video for {unique_uuid}")
 
         final_video = concatenate_videoclips(non_silent_subclips, method="compose")
 
-        logging.info("Writing audio and video to temp files for {unique_uuid}")
+        logging.info(f"Writing audio and video to temp files for {unique_uuid}")
 
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
-        logging.info("Writing final video to temp file for {unique_uuid}")
+        logging.info(f"Writing final video to temp file for {unique_uuid}")
 
         final_video.write_videofile(
             temp_videofile_path,
@@ -100,7 +100,7 @@ def remove_silence(
             logger=None,
         )
 
-        logging.info("Writing final audio to temp file for {unique_uuid}")
+        logging.info(f"Writing final audio to temp file for {unique_uuid}")
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
         audio_with_fps.write_audiofile(temp_audiofile_path)
