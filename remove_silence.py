@@ -54,6 +54,8 @@ def remove_silence(
 
         audio_file = os.path.join(temp_dir, "temp_audio.wav")
         audio.write_audiofile(audio_file)
+        logging.info(f"Audio file written for {unique_uuid}")
+
         audio_segment = AudioSegment.from_file(audio_file)
 
         logging.info(f"Detecting nonsilent ranges for {unique_uuid}")
@@ -63,6 +65,8 @@ def remove_silence(
             min_silence_len=min_silence_duration,
             silence_thresh=silence_threshold,
         )
+
+        logging.info(f"nonsilent_ranges detected for {unique_uuid}")
 
         # Check if nonsilent_ranges is None or empty
         if nonsilent_ranges is None or len(nonsilent_ranges) == 0:
@@ -97,13 +101,14 @@ def remove_silence(
             temp_videofile_path,
             codec="libx264",
             audio=False,
-            logger=None,
         )
 
         logging.info(f"Writing final audio to temp file for {unique_uuid}")
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
         audio_with_fps.write_audiofile(temp_audiofile_path)
+
+        logging.info(f"Writing final video to output file for {unique_uuid}")
 
         output_video_local_path = os.path.join(
             temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
