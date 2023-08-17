@@ -89,8 +89,9 @@ def remove_silence(
             )
             subclip_path = os.path.join(temp_dir, f"subclip_{idx}.mp4")
             subclip.write_videofile(
-                subclip_path, codec="libx264", audio=False, threads=3, logging=False
+                subclip_path, codec="libx264", audio=False, threads=3, logger=None
             )
+            logging.info(f"Subclip {idx} written out of {len(nonsilent_ranges)}")
             subclip_paths.append(subclip_path)
 
         # Create a text file for FFmpeg concatenation
