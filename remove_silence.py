@@ -79,8 +79,12 @@ def remove_silence(
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
 
+        logging.info(f"total nonsilent_ranges: {len(nonsilent_ranges)}")
+
         # List to keep track of the paths to the temporary subclip files
         subclip_paths = []
+
+        logging.info(f"Extracting subclips for {unique_uuid}")
 
         # Extract non-silent subclips and write them to disk
         for idx, (start, end) in enumerate(nonsilent_ranges):
@@ -89,8 +93,15 @@ def remove_silence(
             )
             subclip_path = os.path.join(temp_dir, f"subclip_{idx}.mp4")
             subclip.write_videofile(
-                subclip_path, codec="libx264", audio=False, threads=3, logger=None
+                subclip_path,
+                codec="libx264",
+                audio=False,
+                threads=3,
+                logger=None,
+                preset="ultrafast",
             )
+            if idx / len(nonsilent_ranges) == 0.5:
+                logging.info(f"50% subclips extracted for {unique_uuid}")
             subclip_paths.append(subclip_path)
 
         logging.info(f"Concatenating subclips for {unique_uuid}")
