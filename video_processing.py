@@ -4,7 +4,9 @@ from file_operations import *
 from communication import *
 
 
-@celery_app.task(name="video_processing.process_video", queue="video_processing")
+@celery_app.task(
+    name="video_processing.process_video", queue="video_processing", max_retries=2
+)
 def process_video(
     temp_dir,
     input_video_url,

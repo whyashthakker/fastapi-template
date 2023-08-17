@@ -5,12 +5,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# user = os.environ.get("RABBITMQ_DEFAULT_USER")
-# password = os.environ.get("RABBITMQ_DEFAULT_PASS")
-# host = "railway-rabbitmq-production-1ffa.up.railway.app"
-# port = 5672
-# vhost = "/"
-
 BROKER_URL = os.environ.get("REDIS_URL") or os.environ.get("BROKER_URL")
 RESULT_BACKEND = "rpc://"
 TASK_SERIALIZER = "json"
