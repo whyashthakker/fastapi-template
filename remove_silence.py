@@ -115,6 +115,8 @@ def remove_silence(
         cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}"'
         subprocess.run(cmd, shell=True, check=True)
 
+        logging.info(f"Removing temp files for {unique_uuid}")
+
         video.close()
 
         output_video_s3_path = (
@@ -124,6 +126,8 @@ def remove_silence(
         s3.upload_file(
             output_video_local_path, BUCKET_NAME, output_video_s3_path
         )  # Upload the output video
+
+        logging.info(f"Uploaded output video to S3 for {unique_uuid}")
 
         # Construct the output video S3 URL
         output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
