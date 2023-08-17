@@ -91,8 +91,9 @@ def remove_silence(
             subclip.write_videofile(
                 subclip_path, codec="libx264", audio=False, threads=3, logger=None
             )
-            logging.info(f"Subclip {idx} written out of {len(nonsilent_ranges)}")
             subclip_paths.append(subclip_path)
+
+        logging.info(f"Concatenating subclips for {unique_uuid}")
 
         # Create a text file for FFmpeg concatenation
         concat_file_path = os.path.join(temp_dir, "concat_list.txt")
@@ -100,10 +101,14 @@ def remove_silence(
             for path in subclip_paths:
                 concat_file.write(f"file '{path}'\n")
 
+        logging.info(f"Concatenating subclips using FFmpeg for {unique_uuid}")
+
         # Concatenate the subclips using FFmpeg
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
         concat_cmd = f"ffmpeg -y -f concat -safe 0 -i {concat_file_path} -c copy {temp_videofile_path}"
         subprocess.run(concat_cmd, shell=True, check=True)
+
+        logging.info(f"Removing temporary subclip files for {unique_uuid}")
 
         # Remove temporary subclip files
         for path in subclip_paths:
