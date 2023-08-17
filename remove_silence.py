@@ -98,7 +98,6 @@ def remove_silence(
                 audio=False,
                 threads=3,
                 logger=None,
-                preset="ultrafast",
             )
             if idx / len(nonsilent_ranges) == 0.5:
                 logging.info(f"50% subclips extracted for {unique_uuid}")
