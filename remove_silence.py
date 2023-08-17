@@ -79,31 +79,41 @@ def remove_silence(
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
 
-        logging.info(f"Concatenating nonsilent ranges for {unique_uuid}")
+        # List to keep track of the paths to the temporary subclip files
+        subclip_paths = []
 
-        non_silent_subclips = [
-            video.subclip(max(start / 1000, 0), min(end / 1000, video.duration))
-            for start, end in nonsilent_ranges
-        ]
+        # Extract non-silent subclips and write them to disk
+        for idx, (start, end) in enumerate(nonsilent_ranges):
+            subclip = video.subclip(
+                max(start / 1000, 0), min(end / 1000, video.duration)
+            )
+            subclip_path = os.path.join(temp_dir, f"subclip_{idx}.mp4")
+            subclip.write_videofile(
+                subclip_path, codec="libx264", audio=False, threads=3, logging=False
+            )
+            subclip_paths.append(subclip_path)
 
-        logging.info(f"Concatenating final video for {unique_uuid}")
+        # Create a text file for FFmpeg concatenation
+        concat_file_path = os.path.join(temp_dir, "concat_list.txt")
+        with open(concat_file_path, "w") as concat_file:
+            for path in subclip_paths:
+                concat_file.write(f"file '{path}'\n")
 
-        final_video = concatenate_videoclips(non_silent_subclips, method="compose")
+        # Concatenate the subclips using FFmpeg
+        temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
+        concat_cmd = f"ffmpeg -y -f concat -safe 0 -i {concat_file_path} -c copy {temp_videofile_path}"
+        subprocess.run(concat_cmd, shell=True, check=True)
+
+        # Remove temporary subclip files
+        for path in subclip_paths:
+            os.remove(path)
+        os.remove(concat_file_path)
 
         logging.info(f"Writing audio and video to temp files for {unique_uuid}")
 
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
-        temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
-        logging.info(f"Writing final video to temp file for {unique_uuid}")
-
-        final_video.write_videofile(
-            temp_videofile_path, codec="libx264", audio=False, threads=3
-        )
-
-        logging.info(f"Writing final audio to temp file for {unique_uuid}")
-
-        audio_with_fps = final_video.audio.set_fps(video.audio.fps)
+        audio_with_fps = video.audio.set_fps(video.audio.fps)
         audio_with_fps.write_audiofile(temp_audiofile_path)
 
         logging.info(f"Writing final video to output file for {unique_uuid}")
