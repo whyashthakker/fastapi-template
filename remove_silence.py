@@ -93,11 +93,7 @@ def remove_silence(
             )
             subclip_path = os.path.join(temp_dir, f"subclip_{idx}.mp4")
             subclip.write_videofile(
-                subclip_path,
-                codec="libx264",
-                audio=False,
-                threads=3,
-                logger=None,
+                subclip_path, codec="libx264", audio=False, threads=2, logger=None
             )
             if idx / len(nonsilent_ranges) == 0.5:
                 logging.info(f"50% subclips extracted for {unique_uuid}")
