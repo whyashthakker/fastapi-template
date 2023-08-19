@@ -31,9 +31,9 @@ def remove_silence(
     temp_dir,
     input_video_url,
     unique_uuid,
-    silence_threshold=-36,
+    silence_threshold=-45,
     min_silence_duration=300,
-    padding=300,
+    padding=100,
 ):
     try:
         logging.info(f"Starting to remove silence from video: {input_video_url}.")
