@@ -10,14 +10,14 @@ import subprocess
 import shutil
 from dotenv import load_dotenv
 
+# Load the environment variables
+load_dotenv()
+
 # Set the S3 credentials and config from environment variables
 ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
 SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-BUCKET_NAME = "videosilvids"
-REGION_NAME = "ap-south-1"
-
-# Load the environment variables
-load_dotenv()
+BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
+REGION_NAME = os.environ.get("AWS_REGION_NAME")
 
 s3 = boto3.client(
     "s3",
