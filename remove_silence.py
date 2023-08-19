@@ -70,6 +70,7 @@ def remove_silence(
         )
 
         logging.info(f"Detected nonsilent ranges for {unique_uuid}")
+
         nonsilent_ranges = [
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
@@ -86,33 +87,63 @@ def remove_silence(
         logging.info(f"Concatenating nonsilent subclips for {unique_uuid}")
 
         final_video = concatenate_videoclips(non_silent_subclips, method="compose")
+
+        logging.info(f"Writing final video for {unique_uuid}")
+
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
+
+        logging.info(f"Writing final video to {temp_videofile_path} for {unique_uuid}")
+
         final_video.write_videofile(
             temp_videofile_path,
             codec="libx264",
-            bitrate="2000k",
-            threads=2,
-            preset="medium",
+            bitrate="1500k",  # Adjust based on desired quality
+            threads=3,  # Utilizing 4 threads per process
+            preset="faster",  # You can experiment with "faster" or "fast"
             audio_bitrate="128k",
             audio_fps=44100,
             write_logfile=False,
         )
 
+        logging.info(f"Final video written for {unique_uuid}")
+
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
+
+        logging.info(f"Writing audio file for {unique_uuid}")
+
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
+
+        logging.info(f"Writing audio file to {temp_audiofile_path} for {unique_uuid}")
+
         audio_with_fps.write_audiofile(temp_audiofile_path)
+
+        logging.info(f"Audio file written for {unique_uuid}")
 
         output_video_local_path = os.path.join(
             temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
         )
+
+        logging.info(
+            f"Writing output video to {output_video_local_path} for {unique_uuid}"
+        )
+
         cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}"'
         subprocess.run(cmd, shell=True, check=True)
 
+        logging.info(f"Output video written for {unique_uuid}")
+
         video.close()
+
+        logging.info(f"Uploading output video to S3 for {unique_uuid}")
 
         output_video_s3_path = (
             f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
         )
+
+        logging.info(
+            f"Uploading output video to {output_video_s3_path} for {unique_uuid}"
+        )
+
         s3.upload_file(output_video_local_path, BUCKET_NAME, output_video_s3_path)
 
         logging.info(f"Uploaded output video to S3 for {unique_uuid}")
