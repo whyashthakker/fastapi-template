@@ -44,23 +44,42 @@ def remove_silence(
         if not file_extension:
             original_name += ".mp4"  # Add the file extension only if not present
 
+        logging.info(f"Downloading video file for {unique_uuid}")
+
         input_video_local_path = os.path.join(temp_dir, original_name)
         download_file(input_video_url, input_video_local_path)
 
+        logging.info(f"Downloaded video file for {unique_uuid}")
+
         input_video_file_name = get_unique_filename(original_name)
+
+        logging.info(f"Renaming video file for {unique_uuid}")
+
         unique_video_local_path = os.path.join(temp_dir, input_video_file_name)
+
+        logging.info(f"Renamed video file for {unique_uuid}")
+
         os.rename(input_video_local_path, unique_video_local_path)
+
+        logging.info(f"Setting temp folder for {unique_uuid}")
 
         os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
 
         video = VideoFileClip(unique_video_local_path)
 
+        logging.info(f"Extracting audio for {unique_uuid}")
+
         audio = video.audio
         audio_file = os.path.join(temp_dir, "temp_audio.wav")
+
+        logging.info(f"Writing audio file for {unique_uuid}")
+
         audio.write_audiofile(audio_file)
+
         logging.info(f"Audio file written for {unique_uuid}")
 
         audio_segment = AudioSegment.from_file(audio_file)
+
         logging.info(f"Detecting nonsilent ranges for {unique_uuid}")
 
         nonsilent_ranges = detect_nonsilent(
