@@ -39,7 +39,7 @@ def remove_silence(
         logging.info(f"Starting to remove silence from video: {input_video_url}.")
 
         # Determine original_name based on the URL extension
-        original_name = os.path.basename(input_video_url)
+        original_name = os.path.basename(input_video_url.split("?")[0])
         _, file_extension = os.path.splitext(original_name)
         if not file_extension:
             original_name += ".mp4"  # Add the file extension only if not present
