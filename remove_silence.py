@@ -8,12 +8,16 @@ from file_operations import *
 import boto3
 import subprocess
 import shutil
+from dotenv import load_dotenv
 
 # Set the S3 credentials and config from environment variables
 ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
 SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 BUCKET_NAME = "videosilvids"
 REGION_NAME = "ap-south-1"
+
+# Load the environment variables
+load_dotenv()
 
 s3 = boto3.client(
     "s3",
@@ -34,15 +38,16 @@ def remove_silence(
     try:
         logging.info(f"Starting to remove silence from video: {input_video_url}.")
 
+        # Determine original_name based on the URL extension
         original_name = os.path.basename(input_video_url)
+        _, file_extension = os.path.splitext(original_name)
+        if not file_extension:
+            original_name += ".mp4"  # Add the file extension only if not present
 
         input_video_local_path = os.path.join(temp_dir, original_name)
-
         download_file(input_video_url, input_video_local_path)
 
         input_video_file_name = get_unique_filename(original_name)
-
-        # Rename the downloaded file to the unique name
         unique_video_local_path = os.path.join(temp_dir, input_video_file_name)
         os.rename(input_video_local_path, unique_video_local_path)
 
@@ -51,13 +56,11 @@ def remove_silence(
         video = VideoFileClip(unique_video_local_path)
 
         audio = video.audio
-
         audio_file = os.path.join(temp_dir, "temp_audio.wav")
         audio.write_audiofile(audio_file)
         logging.info(f"Audio file written for {unique_uuid}")
 
         audio_segment = AudioSegment.from_file(audio_file)
-
         logging.info(f"Detecting nonsilent ranges for {unique_uuid}")
 
         nonsilent_ranges = detect_nonsilent(
@@ -66,92 +69,54 @@ def remove_silence(
             silence_thresh=silence_threshold,
         )
 
-        logging.info(f"nonsilent_ranges detected for {unique_uuid}")
-
-        # Check if nonsilent_ranges is None or empty
-        if nonsilent_ranges is None or len(nonsilent_ranges) == 0:
-            logging.error("nonsilent_ranges is None or empty.")
-            raise Exception("nonsilent_ranges is None or empty.")
-
-        logging.info(f"Removing silence from video for {unique_uuid}")
-
+        logging.info(f"Detected nonsilent ranges for {unique_uuid}")
         nonsilent_ranges = [
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
 
-        logging.info(f"total nonsilent_ranges: {len(nonsilent_ranges)}")
+        logging.info(f"Extracting nonsilent subclips for {unique_uuid}")
 
-        # List to keep track of the paths to the temporary subclip files
-        subclip_paths = []
+        non_silent_subclips = []
+        for start, end in nonsilent_ranges:
+            start_time = max(start / 1000, 0)
+            end_time = min(end / 1000, video.duration)
+            subclip = video.subclip(start_time, end_time)
+            non_silent_subclips.append(subclip)
 
-        logging.info(f"Extracting subclips for {unique_uuid}")
+        logging.info(f"Concatenating nonsilent subclips for {unique_uuid}")
 
-        # Extract non-silent subclips and write them to disk
-        for idx, (start, end) in enumerate(nonsilent_ranges):
-            subclip = video.subclip(
-                max(start / 1000, 0), min(end / 1000, video.duration)
-            )
-            subclip_path = os.path.join(temp_dir, f"subclip_{idx}.mp4")
-            subclip.write_videofile(
-                subclip_path, codec="libx264", audio=False, threads=2, logger=None
-            )
-            if idx / len(nonsilent_ranges) == 0.5:
-                logging.info(f"50% subclips extracted for {unique_uuid}")
-            subclip_paths.append(subclip_path)
-
-        logging.info(f"Concatenating subclips for {unique_uuid}")
-
-        # Create a text file for FFmpeg concatenation
-        concat_file_path = os.path.join(temp_dir, "concat_list.txt")
-        with open(concat_file_path, "w") as concat_file:
-            for path in subclip_paths:
-                concat_file.write(f"file '{path}'\n")
-
-        logging.info(f"Concatenating subclips using FFmpeg for {unique_uuid}")
-
-        # Concatenate the subclips using FFmpeg
+        final_video = concatenate_videoclips(non_silent_subclips, method="compose")
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
-        concat_cmd = f"ffmpeg -y -f concat -safe 0 -i {concat_file_path} -c copy {temp_videofile_path}"
-        subprocess.run(concat_cmd, shell=True, check=True)
+        final_video.write_videofile(
+            temp_videofile_path,
+            codec="libx264",
+            bitrate="2000k",
+            threads=2,
+            preset="medium",
+            audio_bitrate="128k",
+            audio_fps=44100,
+            write_logfile=False,
+        )
 
-        logging.info(f"Removing temporary subclip files for {unique_uuid}")
-
-        # Remove temporary subclip files
-        for path in subclip_paths:
-            os.remove(path)
-        os.remove(concat_file_path)
-
-        logging.info(f"Writing audio and video to temp files for {unique_uuid}")
-
+        audio_with_fps = final_video.audio.set_fps(video.audio.fps)
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
-
-        audio_with_fps = video.audio.set_fps(video.audio.fps)
         audio_with_fps.write_audiofile(temp_audiofile_path)
-
-        logging.info(f"Writing final video to output file for {unique_uuid}")
 
         output_video_local_path = os.path.join(
             temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
-        )  # Define output video local path
-
+        )
         cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}"'
         subprocess.run(cmd, shell=True, check=True)
-
-        logging.info(f"Removing temp files for {unique_uuid}")
 
         video.close()
 
         output_video_s3_path = (
             f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
         )
-
-        s3.upload_file(
-            output_video_local_path, BUCKET_NAME, output_video_s3_path
-        )  # Upload the output video
+        s3.upload_file(output_video_local_path, BUCKET_NAME, output_video_s3_path)
 
         logging.info(f"Uploaded output video to S3 for {unique_uuid}")
 
-        # Construct the output video S3 URL
         output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
 
         if os.path.exists(temp_dir):
