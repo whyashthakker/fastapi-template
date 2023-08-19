@@ -15,6 +15,8 @@ myenv/
 
 s3-experiments/
 
+local-processing/
+
 procfile
 
 nixpacks.toml

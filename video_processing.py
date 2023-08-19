@@ -17,6 +17,9 @@ def process_video(
     padding=300,
 ):
     logging.info(f"Starting to process video: {input_video_url}.")
+
+    logging.info(f"Started Processing task for {unique_uuid}")
+
     attempts = 0
     max_attempts = 3
     threshold_increment = -5
