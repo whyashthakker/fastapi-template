@@ -9,4 +9,3 @@ numpy
 celery
 python-dotenv
 Redis
-yt_dlp
