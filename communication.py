@@ -84,7 +84,7 @@ def trigger_webhook(unique_uuid, output_video_s3_url, metrics=None, error_messag
 
 @retry(attempts=3, delay=5)
 def send_failure_webhook(error_message):
-    webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/error-webhook'
+    webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
     payload = {"error_message": error_message}
     headers = {"Content-Type": "application/json"}
     try:

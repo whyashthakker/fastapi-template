@@ -18,6 +18,8 @@ def compute_video_metrics(original_video, final_video, nonsilent_ranges):
     )
 
     metrics = {
+        "original_duration": original_duration,
+        "final_duration": final_duration,
         "duration_reduction": duration_reduction,
         "total_silent_duration_removed": total_silent_duration_removed,
         "number_of_cuts_made": number_of_cuts_made,
