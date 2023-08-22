@@ -52,7 +52,7 @@ def verify_authorization_key(authorization_key: str = Header(...)):
     return authorization_key
 
 
-# 4. FastAPI Routes 1
+# 4. FastAPI Routes
 @app.post("/remove-silence/")
 async def remove_silence_route(
     item: VideoItem, authorization: str = Depends(verify_authorization_key)
