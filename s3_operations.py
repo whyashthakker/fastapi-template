@@ -24,21 +24,10 @@ s3 = boto3.client(
 @retry(attempts=3, delay=5)
 def upload_to_s3(local_path, s3_path):
     try:
-        logging.info("Uploading to S3...")
-        logging.info(f"Local path: {local_path}")
-        logging.info(f"S3 path: {s3_path}")
-        logging.info(f"Bucket name: {BUCKET_NAME}")
         # Check if file exists
         if not os.path.exists(local_path):
             logging.error(f"File does not exist at {local_path}")
             raise FileNotFoundError(f"File not found at {local_path}")
-
-        if not isinstance(local_path, str):
-            logging.error("local_path is not a string")
-        if not isinstance(BUCKET_NAME, str):
-            logging.error("BUCKET_NAME is not a string")
-        if not isinstance(s3_path, str):
-            logging.error("s3_path is not a string")
 
         s3.upload_file(local_path, BUCKET_NAME, s3_path)
         logging.info("Uploaded to S3 successfully")
