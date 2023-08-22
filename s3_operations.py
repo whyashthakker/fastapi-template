@@ -1,6 +1,5 @@
 import boto3
 import logging
-import time
 from dotenv import load_dotenv
 import os
 from utils.retries import retry
@@ -28,6 +27,11 @@ def upload_to_s3(local_path, s3_path):
         logging.info("Uploading to S3...")
         logging.info(f"Local path: {local_path}")
         logging.info(f"S3 path: {s3_path}")
+        # Check if file exists
+        if not os.path.exists(local_path):
+            logging.error(f"File does not exist at {local_path}")
+            raise FileNotFoundError(f"File not found at {local_path}")
+
         s3.upload_file(local_path, BUCKET_NAME, s3_path)
         logging.info("Uploaded to S3 successfully")
     except Exception as e:
