@@ -34,6 +34,7 @@ class VideoItem(BaseModel):
     silence_threshold: Optional[float] = -36
     min_silence_duration: Optional[int] = 300
     padding: Optional[int] = 300
+    userId: Optional[str] = None
 
 
 class AudioItem(BaseModel):
@@ -61,6 +62,7 @@ async def remove_silence_route(
     silence_threshold = item.silence_threshold
     min_silence_duration = item.min_silence_duration
     padding = item.padding
+    userId = item.userId
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
@@ -83,6 +85,7 @@ async def remove_silence_route(
                 silence_threshold,
                 min_silence_duration,
                 padding,
+                userId,
             )
         )
     except Exception as e:

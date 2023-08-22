@@ -32,6 +32,7 @@ def remove_silence(
     silence_threshold=-45,
     min_silence_duration=300,
     padding=100,
+    userId=None,
 ):
     try:
         logging.info(f"Starting to remove silence from video: {input_video_url}.")
@@ -57,8 +58,6 @@ def remove_silence(
         logging.info(f"Renamed video file for {unique_uuid}")
 
         os.rename(input_video_local_path, unique_video_local_path)
-
-        logging.info(f"Setting temp folder for {unique_uuid}")
 
         os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
 
@@ -119,13 +118,9 @@ def remove_silence(
             write_logfile=False,
         )
 
-        logging.info(f"{THREAD} threads used for {unique_uuid}")
-
         logging.info(f"Final video written for {unique_uuid}")
 
         metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
-
-        logging.info(f"Video metrics computed for {metrics}, {unique_uuid}")
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
 
@@ -158,7 +153,9 @@ def remove_silence(
             f"Uploading output video to {output_video_s3_path} for {unique_uuid}"
         )
 
-        upload_to_s3(output_video_local_path, output_video_s3_path)
+        logging.info(f"userId is {userId}")
+
+        upload_to_s3(output_video_local_path, output_video_s3_path, userId)
 
         logging.info(f"Uploaded output video to S3 for {unique_uuid}")
 

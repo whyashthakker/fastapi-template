@@ -15,9 +15,9 @@ def process_video(
     silence_threshold=-30,
     min_silence_duration=300,
     padding=300,
+    userId=None,
 ):
-    logging.info(f"Starting to process video: {input_video_url}.")
-    logging.info(f"Started Processing task for {unique_uuid}")
+    logging.info(f"Starting to process video: {input_video_url}. for {userId}")
 
     output_video_s3_url = None
     attempts = 0
@@ -34,6 +34,7 @@ def process_video(
                 silence_threshold,
                 min_silence_duration,
                 padding,
+                userId,
             )
             logging.info(f"Finished processing video: {input_video_url}.")
             logging.info(
