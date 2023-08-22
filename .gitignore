@@ -20,3 +20,7 @@ local-processing/
 procfile
 
 nixpacks.toml
+
+__pycache__/
+
+/utils/__pycache__/

@@ -9,6 +9,7 @@ import boto3
 import subprocess
 import shutil
 from dotenv import load_dotenv
+from s3_operations import upload_to_s3
 
 # Load the environment variables
 load_dotenv()
@@ -40,6 +41,9 @@ def remove_silence(
 
         # Determine original_name based on the URL extension
         original_name = os.path.basename(input_video_url.split("?")[0])
+
+        original_name = sanitize_filename(original_name)
+
         _, file_extension = os.path.splitext(original_name)
         if not file_extension:
             original_name += ".mp4"  # Add the file extension only if not present
@@ -117,7 +121,9 @@ def remove_silence(
             temp_videofile_path,
             codec="libx264",
             bitrate="1500k",  # Adjust based on desired quality
-            threads=3,  # Utilizing 4 threads per process
+            threads=os.environ.get(
+                "PROCESS_THREADS"
+            ),  # Utilizing 4 threads per process
             preset="faster",  # You can experiment with "faster" or "fast"
             audio_bitrate="128k",
             audio_fps=44100,
@@ -163,7 +169,7 @@ def remove_silence(
             f"Uploading output video to {output_video_s3_path} for {unique_uuid}"
         )
 
-        s3.upload_file(output_video_local_path, BUCKET_NAME, output_video_s3_path)
+        upload_to_s3(output_video_local_path, output_video_s3_path)
 
         logging.info(f"Uploaded output video to S3 for {unique_uuid}")
 

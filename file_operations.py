@@ -2,6 +2,10 @@ import os
 import logging
 from uuid import uuid4
 import requests
+import re
+from utils.retries import retry
+
+retry(attempts=3, delay=5)
 
 
 def download_file(url, dest_path):
@@ -29,3 +33,11 @@ def get_unique_filename(original_name: str) -> str:
             f"Error generating unique filename for {original_name}. Error: {str(e)}"
         )
         raise
+
+
+def sanitize_filename(filename: str) -> str:
+    # Remove non-word characters (everything except numbers and letters)
+    s = re.sub(r"[^\w\s-]", "", filename)
+    # Replace all runs of whitespace with a single dash
+    s = re.sub(r"\s+", "-", s)
+    return s

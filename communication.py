@@ -6,10 +6,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import requests
 from dotenv import load_dotenv
+from utils.retries import retry
 
 load_dotenv()
 
 
+@retry(attempts=3, delay=5)
 def send_email(email, video_url):
     try:
         logging.info(f"Sending email to {email} with video URL {video_url}")
@@ -62,6 +64,7 @@ def send_email(email, video_url):
         raise
 
 
+@retry(attempts=3, delay=5)
 def trigger_webhook(unique_uuid, output_video_s3_url, error_message=None):
     try:
         webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
