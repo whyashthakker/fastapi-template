@@ -43,16 +43,12 @@ def remove_silence(
         if not file_extension:
             original_name += ".mp4"  # Add the file extension only if not present
 
-        logging.info(f"Downloading video file for {unique_uuid}")
-
         input_video_local_path = os.path.join(temp_dir, original_name)
         download_file(input_video_url, input_video_local_path)
 
         logging.info(f"Downloaded video file for {unique_uuid}")
 
         input_video_file_name = get_unique_filename(original_name)
-
-        logging.info(f"Renaming video file for {unique_uuid}")
 
         unique_video_local_path = os.path.join(temp_dir, input_video_file_name)
 
@@ -64,10 +60,6 @@ def remove_silence(
 
         os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
 
-        # if detect_problematic_video(unique_video_local_path):
-        # logging.info(
-        # f"Converting problematic video {input_video_url} to standard format."
-        # )
         unique_video_local_path = convert_to_standard_format(
             unique_video_local_path, temp_dir
         )
@@ -79,15 +71,11 @@ def remove_silence(
         audio = video.audio
         audio_file = os.path.join(temp_dir, "temp_audio.wav")
 
-        logging.info(f"Writing audio file for {unique_uuid}")
-
         audio.write_audiofile(audio_file)
 
         logging.info(f"Audio file written for {unique_uuid}")
 
         audio_segment = AudioSegment.from_file(audio_file)
-
-        logging.info(f"Detecting nonsilent ranges for {unique_uuid}")
 
         nonsilent_ranges = detect_nonsilent(
             audio_segment,
@@ -114,8 +102,6 @@ def remove_silence(
 
         final_video = concatenate_videoclips(non_silent_subclips, method="compose")
 
-        logging.info(f"Writing final video for {unique_uuid}")
-
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
         logging.info(f"Writing final video to {temp_videofile_path} for {unique_uuid}")
@@ -133,23 +119,13 @@ def remove_silence(
 
         logging.info(f"Final video written for {unique_uuid}")
 
-        logging.info(f"Computing video metrics for {unique_uuid}")
-
-        logging.info(f"duration of original video: {video.duration}")
-
-        logging.info(f"duration of final video: {final_video.duration}")
-
         metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
 
         logging.info(f"Video metrics computed for {metrics}, {unique_uuid}")
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
 
-        logging.info(f"Writing audio file for {unique_uuid}")
-
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
-
-        logging.info(f"Writing audio file to {temp_audiofile_path} for {unique_uuid}")
 
         audio_with_fps.write_audiofile(temp_audiofile_path)
 
