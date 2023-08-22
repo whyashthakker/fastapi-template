@@ -65,10 +65,14 @@ def send_email(email, video_url):
 
 
 @retry(attempts=3, delay=5)
-def trigger_webhook(unique_uuid, output_video_s3_url, error_message=None):
+def trigger_webhook(unique_uuid, output_video_s3_url, metrics=None, error_message=None):
     try:
         webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
-        payload = {"uuid": unique_uuid, "output_video_url": output_video_s3_url}
+        payload = {
+            "uuid": unique_uuid,
+            "output_video_url": output_video_s3_url,
+            "metrics": metrics,
+        }
         if error_message:
             payload["error_message"] = error_message
         headers = {"Content-Type": "application/json"}
@@ -76,3 +80,15 @@ def trigger_webhook(unique_uuid, output_video_s3_url, error_message=None):
         response.raise_for_status()
     except requests.RequestException as e:
         logging.error(f"Webhook trigger failed for UUID {unique_uuid}. Error: {str(e)}")
+
+
+@retry(attempts=3, delay=5)
+def send_failure_webhook(error_message):
+    webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/error-webhook'
+    payload = {"error_message": error_message}
+    headers = {"Content-Type": "application/json"}
+    try:
+        response = requests.post(webhook_url, json=payload, headers=headers)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logging.error(f"Error webhook trigger failed. Error: {str(e)}")

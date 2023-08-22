@@ -5,29 +5,24 @@ from moviepy.video.compositing.concatenate import concatenate_videoclips
 import logging
 import os
 from file_operations import *
-import boto3
 import subprocess
 import shutil
 from dotenv import load_dotenv
 from s3_operations import upload_to_s3
+from utils.safeprocess import safe_process
+
+# from utils.safeprocess import safe_process
+from utils.file_standardiser import convert_to_standard_format
+from utils.metrics import compute_video_metrics
 
 # Load the environment variables
 load_dotenv()
 
-# Set the S3 credentials and config from environment variables
-ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
-SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
 REGION_NAME = os.environ.get("AWS_REGION_NAME")
 
-s3 = boto3.client(
-    "s3",
-    aws_access_key_id=ACCESS_KEY,
-    aws_secret_access_key=SECRET_KEY,
-    region_name=REGION_NAME,
-)
 
-
+@safe_process
 def remove_silence(
     temp_dir,
     input_video_url,
@@ -68,6 +63,14 @@ def remove_silence(
         logging.info(f"Setting temp folder for {unique_uuid}")
 
         os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
+
+        # if detect_problematic_video(unique_video_local_path):
+        # logging.info(
+        # f"Converting problematic video {input_video_url} to standard format."
+        # )
+        unique_video_local_path = convert_to_standard_format(
+            unique_video_local_path, temp_dir
+        )
 
         video = VideoFileClip(unique_video_local_path)
 
@@ -120,17 +123,25 @@ def remove_silence(
         final_video.write_videofile(
             temp_videofile_path,
             codec="libx264",
-            bitrate="1500k",  # Adjust based on desired quality
-            threads=os.environ.get(
-                "PROCESS_THREADS"
-            ),  # Utilizing 4 threads per process
-            preset="faster",  # You can experiment with "faster" or "fast"
+            bitrate="1500k",
+            threads=os.environ.get("PROCESS_THREADS"),
+            preset="faster",
             audio_bitrate="128k",
             audio_fps=44100,
             write_logfile=False,
         )
 
         logging.info(f"Final video written for {unique_uuid}")
+
+        logging.info(f"Computing video metrics for {unique_uuid}")
+
+        logging.info(f"duration of original video: {video.duration}")
+
+        logging.info(f"duration of final video: {final_video.duration}")
+
+        metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
+
+        logging.info(f"Video metrics computed for {metrics}, {unique_uuid}")
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
 
@@ -175,10 +186,16 @@ def remove_silence(
 
         output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
 
+        logging.info(f"Output video URL: {output_video_s3_url}")
+
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
-        return output_video_s3_url, unique_uuid
+        logging.info(f"Deleted temp folder for {unique_uuid}")
+
+        logging.info(f"{unique_uuid}, {metrics}, {output_video_s3_url}")
+
+        return output_video_s3_url, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")
