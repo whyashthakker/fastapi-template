@@ -9,3 +9,4 @@ numpy
 celery
 python-dotenv
 Redis
+ffmpeg-python
