@@ -170,8 +170,6 @@ def remove_silence(
 
         video.close()
 
-        logging.info(f"Uploading output video to S3 for {unique_uuid}")
-
         output_video_s3_path = (
             f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
         )
