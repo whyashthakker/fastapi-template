@@ -13,6 +13,7 @@ ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
 SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
 REGION_NAME = os.environ.get("AWS_REGION_NAME")
+EXPIRATION = 86400
 
 s3 = boto3.client(
     "s3",
@@ -38,6 +39,17 @@ def upload_to_s3(local_path, s3_path, userId, folder="trimmed"):
 
         s3.upload_file(local_path, BUCKET_NAME, s3_path)
         logging.info(f"Uploaded to S3 successfully at {s3_path}")
+
+        # Generate a pre-signed URL for the uploaded file
+        presigned_url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET_NAME, "Key": s3_path},
+            ExpiresIn=EXPIRATION,
+        )
+        logging.info(f"Generated pre-signed URL: {presigned_url}")
+
+        return presigned_url
+
     except Exception as e:
         logging.warning(f"Failed to upload to S3. Error: {str(e)}")
         raise
