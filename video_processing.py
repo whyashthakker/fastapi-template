@@ -58,7 +58,7 @@ def process_video(
     # Move email and webhook triggers here
     if output_video_s3_url:
         send_email(email, output_video_s3_url)
-        trigger_webhook(unique_uuid, output_video_s3_url, metrics)
+        trigger_webhook(unique_uuid, output_video_s3_url, input_video_url, metrics)
 
     else:
         # Handle cases where video processing fails and no URL is generated.
