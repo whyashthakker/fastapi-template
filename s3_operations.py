@@ -23,7 +23,7 @@ s3 = boto3.client(
 
 
 @retry(attempts=3, delay=5)
-def upload_to_s3(local_path, s3_path, userId):
+def upload_to_s3(local_path, s3_path, userId, folder="trimmed"):
     try:
         # Check if file exists
         if not os.path.exists(local_path):
@@ -33,8 +33,8 @@ def upload_to_s3(local_path, s3_path, userId):
         # Generate today's date in YYYY-MM-DD format
         today = datetime.now().strftime("%Y-%m-%d")
 
-        # Modify s3_path to include the userId, today's date, and the "trimmed" folder
-        s3_path = f"{userId}/{today}/trimmed/{s3_path}"
+        # Modify s3_path to include the userId, today's date, and the specified folder
+        s3_path = f"{userId}/{today}/{folder}/{s3_path}"
 
         s3.upload_file(local_path, BUCKET_NAME, s3_path)
         logging.info(f"Uploaded to S3 successfully at {s3_path}")

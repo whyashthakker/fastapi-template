@@ -149,6 +149,18 @@ def remove_silence(
             f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
         )
 
+        original_video_s3_path = (
+            f"{unique_uuid}_original{os.path.splitext(input_video_file_name)[1]}"
+        )
+
+        logging.info(
+            f"Uploading original video to {original_video_s3_path} for {unique_uuid}"
+        )
+
+        upload_to_s3(
+            unique_video_local_path, original_video_s3_path, userId, folder="original"
+        )
+
         logging.info(
             f"Uploading output video to {output_video_s3_path} for {unique_uuid}"
         )
