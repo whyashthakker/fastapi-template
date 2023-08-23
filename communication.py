@@ -65,12 +65,19 @@ def send_email(email, video_url):
 
 
 @retry(attempts=3, delay=5)
-def trigger_webhook(unique_uuid, output_video_s3_url, metrics=None, error_message=None):
+def trigger_webhook(
+    unique_uuid,
+    output_video_s3_url,
+    original_video_url,
+    metrics=None,
+    error_message=None,
+):
     try:
         webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
         payload = {
             "uuid": unique_uuid,
             "output_video_url": output_video_s3_url,
+            "input_video": original_video_url,  # Adding the original video URL to the payload
             "metrics": metrics,
         }
         if error_message:

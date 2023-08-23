@@ -90,7 +90,7 @@ async def remove_silence_route(
         )
     except Exception as e:
         logging.error(f"Failed to initiate video processing. Error: {str(e)}")
-        trigger_webhook(unique_uuid, None, error_message=str(e))
+        trigger_webhook(unique_uuid, None, None, error_message=str(e))
         return {
             "status": "Failed to initiate video processing.",
             "error_message": str(e),
