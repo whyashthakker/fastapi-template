@@ -167,22 +167,22 @@ def remove_silence(
 
         logging.info(f"userId is {userId}")
 
-        upload_to_s3(output_video_local_path, output_video_s3_path, userId)
+        presignedUrl = upload_to_s3(
+            output_video_local_path, output_video_s3_path, userId
+        )
 
         logging.info(f"Uploaded output video to S3 for {unique_uuid}")
 
-        output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
+        # output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
 
-        logging.info(f"Output video URL: {output_video_s3_url}")
+        # logging.info(f"Output video URL: {output_video_s3_url}")
 
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
         logging.info(f"Deleted temp folder for {unique_uuid}")
 
-        logging.info(f"{unique_uuid}, {metrics}, {output_video_s3_url}")
-
-        return output_video_s3_url, unique_uuid, metrics
+        return presignedUrl, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")
