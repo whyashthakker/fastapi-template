@@ -38,7 +38,6 @@ def upload_to_s3(local_path, s3_path, userId, folder="trimmed"):
         s3_path = f"{userId}/{today}/{folder}/{s3_path}"
 
         s3.upload_file(local_path, BUCKET_NAME, s3_path)
-        logging.info(f"Uploaded to S3 successfully at {s3_path}")
 
         # Generate a pre-signed URL for the uploaded file
         presigned_url = s3.generate_presigned_url(
@@ -46,7 +45,8 @@ def upload_to_s3(local_path, s3_path, userId, folder="trimmed"):
             Params={"Bucket": BUCKET_NAME, "Key": s3_path},
             ExpiresIn=EXPIRATION,
         )
-        logging.info(f"Generated pre-signed URL: {presigned_url}")
+
+        logging.info("[UPLOADED_TO_S3]")
 
         return presigned_url
 

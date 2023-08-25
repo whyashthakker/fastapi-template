@@ -35,7 +35,7 @@ def remove_silence(
     userId=None,
 ):
     try:
-        logging.info(f"Starting to remove silence from video: {input_video_url}.")
+        logging.info(f"[REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
 
         # Determine original_name based on the URL extension
         original_name = os.path.basename(input_video_url.split("?")[0])
@@ -49,13 +49,9 @@ def remove_silence(
         input_video_local_path = os.path.join(temp_dir, original_name)
         download_file(input_video_url, input_video_local_path)
 
-        logging.info(f"Downloaded video file for {unique_uuid}")
-
         input_video_file_name = get_unique_filename(original_name)
 
         unique_video_local_path = os.path.join(temp_dir, input_video_file_name)
-
-        logging.info(f"Renamed video file for {unique_uuid}")
 
         os.rename(input_video_local_path, unique_video_local_path)
 
@@ -67,14 +63,10 @@ def remove_silence(
 
         video = VideoFileClip(unique_video_local_path)
 
-        logging.info(f"Extracting audio for {unique_uuid}")
-
         audio = video.audio
         audio_file = os.path.join(temp_dir, "temp_audio.wav")
 
-        audio.write_audiofile(audio_file)
-
-        logging.info(f"Audio file written for {unique_uuid}")
+        audio.write_audiofile(audio_file, logger=None)
 
         audio_segment = AudioSegment.from_file(audio_file)
 
@@ -84,13 +76,9 @@ def remove_silence(
             silence_thresh=silence_threshold,
         )
 
-        logging.info(f"Detected nonsilent ranges for {unique_uuid}")
-
         nonsilent_ranges = [
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
-
-        logging.info(f"Extracting nonsilent subclips for {unique_uuid}")
 
         non_silent_subclips = []
         for start, end in nonsilent_ranges:
@@ -99,13 +87,15 @@ def remove_silence(
             subclip = video.subclip(start_time, end_time)
             non_silent_subclips.append(subclip)
 
-        logging.info(f"Concatenating nonsilent subclips for {unique_uuid}")
+        logging.info(
+            f"[NON_SILENT_SUBCIPS_EXTRACTION_DONE_CONCATENATING]: {unique_uuid}"
+        )
 
         final_video = concatenate_videoclips(non_silent_subclips, method="compose")
 
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
-        logging.info(f"Writing final video to {temp_videofile_path} for {unique_uuid}")
+        logging.info(f"[WRITING_FINAL_VIDEO]: {unique_uuid}")
 
         final_video.write_videofile(
             temp_videofile_path,
@@ -116,9 +106,8 @@ def remove_silence(
             audio_bitrate="128k",
             audio_fps=44100,
             write_logfile=False,
+            logger=None,
         )
-
-        logging.info(f"Final video written for {unique_uuid}")
 
         metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
 
@@ -126,22 +115,20 @@ def remove_silence(
 
         temp_audiofile_path = os.path.join(temp_dir, "temp_audiofile.mp3")
 
-        audio_with_fps.write_audiofile(temp_audiofile_path)
-
-        logging.info(f"Audio file written for {unique_uuid}")
+        audio_with_fps.write_audiofile(temp_audiofile_path, logger=None)
 
         output_video_local_path = os.path.join(
             temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
         )
 
-        logging.info(
-            f"Writing output video to {output_video_local_path} for {unique_uuid}"
+        cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}" -loglevel error'
+        subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
         )
-
-        cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}"'
-        subprocess.run(cmd, shell=True, check=True)
-
-        logging.info(f"Output video written for {unique_uuid}")
 
         video.close()
 
@@ -153,34 +140,18 @@ def remove_silence(
             f"{unique_uuid}_original{os.path.splitext(input_video_file_name)[1]}"
         )
 
-        logging.info(
-            f"Uploading original video to {original_video_s3_path} for {unique_uuid}"
-        )
-
         upload_to_s3(
             unique_video_local_path, original_video_s3_path, userId, folder="original"
         )
 
-        logging.info(
-            f"Uploading output video to {output_video_s3_path} for {unique_uuid}"
-        )
-
-        logging.info(f"userId is {userId}")
+        logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
 
         presignedUrl = upload_to_s3(
             output_video_local_path, output_video_s3_path, userId
         )
 
-        logging.info(f"Uploaded output video to S3 for {unique_uuid}")
-
-        # output_video_s3_url = f"https://{BUCKET_NAME}.s3.{REGION_NAME}.amazonaws.com/{output_video_s3_path}"
-
-        # logging.info(f"Output video URL: {output_video_s3_url}")
-
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
-
-        logging.info(f"Deleted temp folder for {unique_uuid}")
 
         return presignedUrl, unique_uuid, metrics
 
@@ -197,3 +168,4 @@ def remove_silence(
 
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+            logging.info(f"[TEMP_DIR_REMOVED] for {unique_uuid}")

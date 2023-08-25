@@ -1,8 +1,10 @@
 from utils.retries import retry
+import logging
 
 
 @retry(attempts=3, delay=5)
 def compute_video_metrics(original_video, final_video, nonsilent_ranges):
+    logging.info(f"[COMPUTING_METRICS]")
     original_duration = int(original_video.duration)
     final_duration = int(final_video.duration)
     duration_reduction = original_duration - final_duration

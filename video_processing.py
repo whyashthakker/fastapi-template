@@ -17,7 +17,9 @@ def process_video(
     padding=300,
     userId=None,
 ):
-    logging.info(f"Starting to process video: {input_video_url}. for {userId}")
+    logging.info(
+        f"[VIDEO_PROCESSING_STARTING]: {input_video_url}, {unique_uuid}. [USER]: {userId}"
+    )
 
     output_video_s3_url = None
     attempts = 0
@@ -36,10 +38,7 @@ def process_video(
                 padding,
                 userId,
             )
-            logging.info(f"Finished processing video: {input_video_url}.")
-            logging.info(
-                f"Attempt {attempts + 1}: Successfully processed video. URL: {output_video_s3_url}"
-            )
+            logging.info(f"[VIDEO_PROCESSING_COMPLETED]: {unique_uuid}.")
             break
 
         except Exception as e:
@@ -58,17 +57,26 @@ def process_video(
         finally:
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
+                logging.info(f"[TEMP_DIR_REMOVED] for {unique_uuid}")
 
-    # Move email and webhook triggers here
     if output_video_s3_url:
-        send_email(email, output_video_s3_url)
-        trigger_webhook(unique_uuid, output_video_s3_url, input_video_url, metrics)
+        try:
+            send_email(email, output_video_s3_url)
+        except Exception as e:
+            logging.error(f"Failed to send email. Error: {str(e)}")
+
+        try:
+            trigger_webhook(unique_uuid, output_video_s3_url, input_video_url, metrics)
+        except Exception as e:
+            logging.error(f"Failed to trigger webhook. Error: {str(e)}")
 
     else:
-        # Handle cases where video processing fails and no URL is generated.
-        send_failure_webhook(
-            error_message or "Unknown error occurred during video processing."
-        )
+        try:
+            send_failure_webhook(
+                error_message or "Unknown error occurred during video processing."
+            )
+        except Exception as e:
+            logging.error(f"Failed to send failure webhook. Error: {str(e)}")
 
 
 @celery_app.task(name="video_processing.process_audio", queue="audio_test")

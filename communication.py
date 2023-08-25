@@ -14,7 +14,6 @@ load_dotenv()
 @retry(attempts=3, delay=5)
 def send_email(email, video_url):
     try:
-        logging.info(f"Sending email to {email} with video URL {video_url}")
         sender = os.environ.get("email_sender")
         password = os.environ.get("email_password")
         receiver = email
@@ -59,6 +58,7 @@ def send_email(email, video_url):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
             smtp.login(sender, password)
             smtp.sendmail(sender, receiver, message.as_string())
+            logging.info(f"[EMAIL_SENT]")
     except smtplib.SMTPException as e:
         logging.error(f"Error sending email to {email}. Error: {str(e)}")
         raise
@@ -85,6 +85,7 @@ def trigger_webhook(
         headers = {"Content-Type": "application/json"}
         response = requests.post(webhook_url, json=payload, headers=headers)
         response.raise_for_status()
+        logging.info(f"[WEBHOOK_TRIGGERED]: {unique_uuid}")
     except requests.RequestException as e:
         logging.error(f"Webhook trigger failed for UUID {unique_uuid}. Error: {str(e)}")
 

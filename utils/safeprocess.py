@@ -12,7 +12,6 @@ def safe_process(func):
             function_name = func.__name__
             error_msg = str(e)
             logging.error(f"Error occurred in function {function_name}: {error_msg}")
-            # Check if the error message does not indicate a webhook failure
             if "webhook" not in error_msg.lower():
                 send_failure_webhook(error_msg)
             raise
