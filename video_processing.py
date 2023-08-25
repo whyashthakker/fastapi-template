@@ -55,6 +55,10 @@ def process_video(
                 error_message = str(e)
                 break
 
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
     # Move email and webhook triggers here
     if output_video_s3_url:
         send_email(email, output_video_s3_url)

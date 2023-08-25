@@ -187,3 +187,13 @@ def remove_silence(
     except Exception as e:
         logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")
         raise
+
+    finally:
+        # Close the video object if it exists
+        try:
+            video.close()
+        except NameError:
+            pass  # 'video' isn't defined, so it's safe to pass
+
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)

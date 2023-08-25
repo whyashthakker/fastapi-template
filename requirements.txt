@@ -10,3 +10,4 @@ celery
 python-dotenv
 Redis
 ffmpeg-python
+flower
