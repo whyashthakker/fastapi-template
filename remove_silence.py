@@ -95,6 +95,10 @@ def remove_silence(
 
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
+        temp_audiofile_path = os.path.join(
+            temp_dir, "temp_audio_for_video_conversion.mp3"
+        )
+
         logging.info(f"[WRITING_FINAL_VIDEO]: {unique_uuid}")
 
         final_video.write_videofile(
@@ -107,6 +111,7 @@ def remove_silence(
             audio_fps=44100,
             write_logfile=False,
             logger=None,
+            temp_audiofile=temp_audiofile_path,
         )
 
         metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
@@ -158,14 +163,3 @@ def remove_silence(
     except Exception as e:
         logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")
         raise
-
-    finally:
-        # Close the video object if it exists
-        try:
-            video.close()
-        except NameError:
-            pass  # 'video' isn't defined, so it's safe to pass
-
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
-            logging.info(f"[TEMP_DIR_REMOVED] for {unique_uuid}")

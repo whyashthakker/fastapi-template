@@ -38,7 +38,9 @@ def process_video(
                 padding,
                 userId,
             )
-            logging.info(f"[VIDEO_PROCESSING_COMPLETED]: {unique_uuid}.")
+            logging.info(
+                f"[VIDEO_PROCESSING_COMPLETED]: {output_video_s3_url} {unique_uuid}."
+            )
             break
 
         except Exception as e:
