@@ -1,15 +1,15 @@
 from celery_config import celery_app
-from remove_silence import *
 from file_operations import *
 from communication import *
+from audio_silence import *
 
 
 @celery_app.task(
-    name="video_processing.process_video", queue="video_processing", max_retries=2
+    name="audio_processing.process_audio", queue="audio_processing", max_retries=2
 )
-def process_video(
+def process_audio(
     temp_dir,
-    input_video_url,
+    input_audio_url,
     email,
     unique_uuid,
     silence_threshold=-30,
@@ -18,10 +18,10 @@ def process_video(
     userId=None,
 ):
     logging.info(
-        f"[VIDEO_PROCESSING_STARTING]: {input_video_url}, {unique_uuid}. [USER]: {userId}"
+        f"[AUDIO_PROCESSING_STARTING]: {input_audio_url}, {unique_uuid}. [USER]: {userId}"
     )
 
-    output_video_s3_url = None
+    output_audio_s3_url = None
     attempts = 0
     max_attempts = 3
     threshold_increment = -5
@@ -29,17 +29,16 @@ def process_video(
 
     while attempts < max_attempts:
         try:
-            output_video_s3_url, _, metrics = remove_silence(
+            output_audio_s3_url = remove_silence(
                 temp_dir,
-                input_video_url,
+                input_audio_url,
                 unique_uuid,
                 silence_threshold,
                 min_silence_duration,
                 padding,
-                userId,
             )
             logging.info(
-                f"[VIDEO_PROCESSING_COMPLETED]: {output_video_s3_url} {unique_uuid}."
+                f"[AUDIO_PROCESSING_COMPLETED]: {output_audio_s3_url} {unique_uuid}."
             )
             break
 
@@ -61,21 +60,21 @@ def process_video(
                 shutil.rmtree(temp_dir)
                 logging.info(f"[TEMP_DIR_REMOVED] for {unique_uuid}")
 
-    if output_video_s3_url:
+    if output_audio_s3_url:
         try:
-            send_email(email, output_video_s3_url)
+            send_email(email, output_audio_s3_url)
         except Exception as e:
             logging.error(f"Failed to send email. Error: {str(e)}")
 
         try:
-            trigger_webhook(unique_uuid, output_video_s3_url, input_video_url, metrics)
+            trigger_webhook(unique_uuid, output_audio_s3_url, input_audio_url)
         except Exception as e:
             logging.error(f"Failed to trigger webhook. Error: {str(e)}")
 
     else:
         try:
             send_failure_webhook(
-                error_message or "Unknown error occurred during video processing."
+                error_message or "Unknown error occurred during audio processing."
             )
         except Exception as e:
             logging.error(f"Failed to send failure webhook. Error: {str(e)}")

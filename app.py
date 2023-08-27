@@ -19,6 +19,7 @@ from fastapi import HTTPException, Header, Depends
 from remove_silence import *
 from file_operations import *
 from communication import *
+from audio_processing import process_audio
 from video_processing import process_video
 
 # Initialize FastAPI app
@@ -108,4 +109,49 @@ async def remove_silence_route(
 
 @app.post("/audio-silence/")
 async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTasks):
-    return "Removing silence from audio."
+    input_audio_url = item.input_audio
+    email = item.email
+    silence_threshold = item.silence_threshold
+    min_silence_duration = item.min_silence_duration
+    padding = item.padding
+
+    if input_audio_url is None:
+        logging.error("input_audio_url is None.")
+        trigger_webhook(None, error_message="Please share a valid audio URL.")
+        return {
+            "status": "Failed to initiate audio processing. Please share a valid audio URL.",
+            "error_message": "Please share a valid audio URL.",
+        }
+
+    unique_uuid = str(uuid4())
+    temp_dir = tempfile.mkdtemp()
+    logging.info(f"Started audio")
+
+    try:
+        process_audio.apply_async(
+            (
+                temp_dir,
+                input_audio_url,
+                email,
+                unique_uuid,
+                silence_threshold,
+                min_silence_duration,
+                padding,
+            )
+        )
+    except Exception as e:
+        logging.error(f"Failed to initiate audio processing. Error: {str(e)}")
+        trigger_webhook(unique_uuid, None, error_message=str(e))
+        return {
+            "status": "Failed to initiate audio processing.",
+            "error_message": str(e),
+        }
+    finally:
+        # Cleanup temp_dir
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+    return {
+        "status": "Audio processing started. You will be notified by email once it's done.",
+        "request_id": unique_uuid,
+    }

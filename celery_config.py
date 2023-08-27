@@ -16,6 +16,9 @@ CELERY_QUEUES = (
     Queue(
         "video_processing", Exchange("video_processing"), routing_key="video_processing"
     ),
+    Queue(
+        "audio_processing", Exchange("audio_processing"), routing_key="audio_processing"
+    ),
 )
 
 
@@ -24,7 +27,10 @@ def make_celery(app_name=__name__):
         app_name,
         broker=BROKER_URL,
         backend=RESULT_BACKEND,
-        include=["video_processing"],
+        include=[
+            "video_processing",
+            "audio_processing",
+        ],  # Updated to include audio_processing
     )
     celery.conf.update(
         task_serializer=TASK_SERIALIZER,
