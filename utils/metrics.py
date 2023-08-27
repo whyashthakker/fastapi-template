@@ -35,12 +35,10 @@ def compute_audio_metrics(original_audio_duration, nonsilent_ranges):
     logging.info(f"[COMPUTING_METRICS]")
 
     original_duration = original_audio_duration
-    final_duration = (
-        sum([(end - start) for start, end in nonsilent_ranges]) / 1000
-    )  # Sum of all non-silent segments
     total_silent_duration_removed = (
-        original_duration - final_duration
-    )  # Actual silence removed
+        sum([(end - start) for start, end in nonsilent_ranges]) / 1000
+    )  # Convert from ms to seconds
+    final_duration = original_duration - total_silent_duration_removed
     number_of_cuts_made = len(nonsilent_ranges)
     average_silence_duration = (
         total_silent_duration_removed / number_of_cuts_made
