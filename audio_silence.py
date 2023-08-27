@@ -57,6 +57,8 @@ def remove_silence(
             (start - padding, end + padding) for start, end in nonsilent_ranges
         ]
 
+        logging.info(f"[NON_SILENT_RANGES_CONCATENATED]: {unique_uuid}.")
+
         concatenated_audio = AudioSegment.empty()
 
         for start, end in nonsilent_ranges:
@@ -64,6 +66,8 @@ def remove_silence(
 
         output_audio_local_path = os.path.join(temp_dir, "output" + file_extension)
         concatenated_audio.export(output_audio_local_path, format="wav")
+
+        logging.info(f"[AUDIO_EXPORTED]: {unique_uuid}.")
 
         output_audio_s3_path = (
             f"{unique_uuid}_output{os.path.splitext(original_name)[1]}"
@@ -80,6 +84,8 @@ def remove_silence(
         presignedUrl = upload_to_s3(
             output_audio_local_path, output_audio_s3_path, userId
         )
+
+        logging.info(f"[AUDIO_UPLOADED]: {unique_uuid}.")
 
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
