@@ -17,6 +17,7 @@ def send_email(email, video_url):
         sender = os.environ.get("email_sender")
         password = os.environ.get("email_password")
         receiver = email
+        alias = os.environ.get("email_alias")
 
         subject = "Your processed video is ready!"
 
@@ -30,20 +31,20 @@ def send_email(email, video_url):
                 
                 <ul>
                     <li><a href="{video_url}">Download your video</a></li>
-                    <li>Check the job status and download from your <a href="https://app.videosilenceremover.com/dashboard">dashboard</a></li>
+                    <li>Check the job status and download from your <a href="https://app.videosilenceremover.com/video-silence-remover">dashboard</a></li>
                     <li>Want to process another video? <a href="https://app.videosilenceremover.com/video-silence-remover">Upload another video</a></li>
                 </ul>
                 
-                <p>If you have any questions, feel free to reach out to our <a href="mailto:support@videosilenceremover.com">support team</a>.</p>
+                <p>If you have any questions, feel free to reach out to our <a href="mailto:support@snapy.ai">support team</a>.</p>
                 
                 <p>Warm Regards,</p>
-                <p>VideoSilenceRemover Team</p>
+                <p>Snapy Team</p>
             </body>
         </html>
         """
 
         message = MIMEMultipart("alternative")
-        message["From"] = sender
+        message["From"] = alias
         message["To"] = email
         message["Subject"] = subject
 
