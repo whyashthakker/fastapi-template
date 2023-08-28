@@ -19,8 +19,6 @@ load_dotenv()
 BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
 REGION_NAME = os.environ.get("AWS_REGION_NAME")
 
-THREAD = os.environ.get("PROCESS_THREADS")
-
 
 @safe_process
 def remove_silence(

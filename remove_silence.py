@@ -21,8 +21,6 @@ load_dotenv()
 BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
 REGION_NAME = os.environ.get("AWS_REGION_NAME")
 
-THREAD = os.environ.get("PROCESS_THREADS")
-
 
 @safe_process
 def remove_silence(
@@ -105,7 +103,7 @@ def remove_silence(
             temp_videofile_path,
             codec="libx264",
             bitrate="1500k",
-            threads=THREAD,
+            threads=os.environ.get("PROCESS_THREADS"),
             preset="faster",
             audio_bitrate="128k",
             audio_fps=44100,
