@@ -24,7 +24,7 @@ def send_email(email, video_url):
         body = f"""
         <html>
             <body>
-                <h2>🎉 Your Processed Video is Ready! 🎉</h2>
+                <h2>🎉 Your Processed Video is Ready! 🎉 (Expires in 1 Day)</h2>
                 
                 <p>Thank you for using VideoSilenceRemover! Your video has been processed successfully. You can:</p>
                 
