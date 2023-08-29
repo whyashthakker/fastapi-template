@@ -44,16 +44,20 @@ def process_video(
             break
 
         except Exception as e:
-            logging.error(f"Attempt {attempts + 1} failed. Error: {str(e)}")
-            # If nonsilent_ranges error, try increasing the threshold
+            # Check for the specific error and replace it with a more user-friendly message
             if str(e) == "nonsilent_ranges is None or empty.":
+                friendly_error = "The video does not contain any detectable audio."
+                logging.error(f"Attempt {attempts + 1} failed. Error: {friendly_error}")
+                error_message = friendly_error
                 attempts += 1
                 silence_threshold += threshold_increment
                 logging.warning(
                     f"Adjusting silence threshold to {silence_threshold}. Attempt {attempts}/{max_attempts}."
                 )
             else:
-                error_message = str(e)
+                friendly_error = f"A processing error occurred: {str(e)}"
+                logging.error(f"Attempt {attempts + 1} failed. Error: {friendly_error}")
+                error_message = friendly_error
                 break
 
         finally:
