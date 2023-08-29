@@ -46,7 +46,7 @@ def send_email(email, video_url):
         """
 
         message = MIMEMultipart("alternative")
-        message["From"] = alias
+        message["From"] = f"Media @ Snapy <{alias}>"
         message["To"] = email
         message["Subject"] = subject
 
