@@ -9,7 +9,6 @@ import subprocess
 import shutil
 from dotenv import load_dotenv
 from s3_operations import upload_to_s3
-from utils.safeprocess import safe_process
 
 # from utils.safeprocess import safe_process
 from utils.file_standardiser import convert_to_standard_format
@@ -17,9 +16,6 @@ from utils.metrics import compute_video_metrics
 
 # Load the environment variables
 load_dotenv()
-
-BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
-REGION_NAME = os.environ.get("AWS_REGION_NAME")
 
 
 def remove_silence(

@@ -16,9 +16,6 @@ from utils.metrics import compute_audio_metrics
 # Load the environment variables
 load_dotenv()
 
-BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
-REGION_NAME = os.environ.get("AWS_REGION_NAME")
-
 
 @safe_process
 def remove_silence(
