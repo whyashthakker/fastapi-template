@@ -11,6 +11,10 @@ def safe_process(func):
         except Exception as e:
             function_name = func.__name__
 
+            # Extract unique_uuid from the function arguments.
+            # Assuming unique_uuid is the third argument of the wrapped function:
+            unique_uuid = args[2]
+
             # Check for specific known errors and replace with user-friendly message
             if str(e) == "nonsilent_ranges is None or empty.":
                 friendly_error = "The video does not contain any detectable audio."
@@ -23,7 +27,7 @@ def safe_process(func):
 
             # Send a failure webhook if the error is not related to the webhook itself
             if "webhook" not in str(e).lower():
-                send_failure_webhook(friendly_error)
+                send_failure_webhook(friendly_error, unique_uuid)
 
             raise
 

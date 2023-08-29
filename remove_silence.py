@@ -22,7 +22,6 @@ BUCKET_NAME = os.environ.get("AWS_BUCKET_NAME")
 REGION_NAME = os.environ.get("AWS_REGION_NAME")
 
 
-@safe_process
 def remove_silence(
     temp_dir,
     input_video_url,

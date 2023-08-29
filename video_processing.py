@@ -46,19 +46,23 @@ def process_video(
         except Exception as e:
             # Check for the specific error and replace it with a more user-friendly message
             if str(e) == "nonsilent_ranges is None or empty.":
+                friendly_error = "The video does not contain any silence."
+            elif "max() arg is an empty sequence" in str(e):
                 friendly_error = "The video does not contain any detectable audio."
-                logging.error(f"Attempt {attempts + 1} failed. Error: {friendly_error}")
-                error_message = friendly_error
+            else:
+                friendly_error = f"A processing error occurred: {str(e)}"
+
+            logging.error(f"Attempt {attempts + 1} failed. Error: {friendly_error}")
+            error_message = friendly_error
+
+            if "The video does not contain any detectable audio." in friendly_error:
+                break
+            else:
                 attempts += 1
                 silence_threshold += threshold_increment
                 logging.warning(
                     f"Adjusting silence threshold to {silence_threshold}. Attempt {attempts}/{max_attempts}."
                 )
-            else:
-                friendly_error = f"A processing error occurred: {str(e)}"
-                logging.error(f"Attempt {attempts + 1} failed. Error: {friendly_error}")
-                error_message = friendly_error
-                break
 
         finally:
             if os.path.exists(temp_dir):
@@ -79,7 +83,8 @@ def process_video(
     else:
         try:
             send_failure_webhook(
-                error_message or "Unknown error occurred during video processing."
+                error_message or "Unknown error occurred during video processing.",
+                unique_uuid,
             )
         except Exception as e:
             logging.error(f"Failed to send failure webhook. Error: {str(e)}")

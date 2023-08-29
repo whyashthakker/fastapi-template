@@ -10,6 +10,8 @@ from utils.retries import retry
 
 load_dotenv()
 
+FAILURE_WEBHOOK_TRIGGERED = False
+
 
 @retry(attempts=3, delay=5)
 def send_email(email, video_url):
@@ -91,13 +93,26 @@ def trigger_webhook(
         logging.error(f"Webhook trigger failed for UUID {unique_uuid}. Error: {str(e)}")
 
 
-@retry(attempts=3, delay=5)
-def send_failure_webhook(error_message):
+def send_failure_webhook(error_message, unique_uuid):
+    global FAILURE_WEBHOOK_TRIGGERED
+
+    # If the webhook has already been triggered, just return
+    if FAILURE_WEBHOOK_TRIGGERED:
+        return
+
     webhook_url = f'{os.environ.get("NEXT_APP_URL")}/api/vsr-webhook'
-    payload = {"error_message": error_message}
+    payload = {
+        "error_message": error_message,
+        "uuid": unique_uuid,
+    }
     headers = {"Content-Type": "application/json"}
     try:
+        logging.info(f"[ERROR_WEBHOOK_TRIGGERED]: {payload}")
         response = requests.post(webhook_url, json=payload, headers=headers)
         response.raise_for_status()
+
+        # After successfully sending the webhook, set the flag to True
+        FAILURE_WEBHOOK_TRIGGERED = True
+
     except requests.RequestException as e:
         logging.error(f"Error webhook trigger failed. Error: {str(e)}")

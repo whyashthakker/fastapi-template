@@ -74,7 +74,8 @@ def process_audio(
     else:
         try:
             send_failure_webhook(
-                error_message or "Unknown error occurred during audio processing."
+                error_message or "Unknown error occurred during audio processing.",
+                unique_uuid,
             )
         except Exception as e:
             logging.error(f"Failed to send failure webhook. Error: {str(e)}")
