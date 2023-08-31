@@ -13,6 +13,7 @@ from s3_operations import upload_to_s3
 # from utils.safeprocess import safe_process
 from utils.file_standardiser import convert_to_standard_format
 from utils.metrics import compute_video_metrics
+from utils.detect_silence_threshold import compute_silence_threshold
 
 # Load the environment variables
 load_dotenv()
@@ -63,28 +64,49 @@ def remove_silence(
 
         audio_segment = AudioSegment.from_file(audio_file)
 
-        nonsilent_ranges = detect_nonsilent(
-            audio_segment,
-            min_silence_len=min_silence_duration,
-            silence_thresh=silence_threshold,
-        )
+        while True:
+            logging.info(f"Silence threshold: {silence_threshold}")
 
-        nonsilent_ranges = [
-            (start - padding, end + padding) for start, end in nonsilent_ranges
-        ]
+            nonsilent_ranges = detect_nonsilent(
+                audio_segment,
+                min_silence_len=min_silence_duration,
+                silence_thresh=silence_threshold,
+            )
 
-        non_silent_subclips = []
-        for start, end in nonsilent_ranges:
-            start_time = max(start / 1000, 0)
-            end_time = min(end / 1000, video.duration)
-            subclip = video.subclip(start_time, end_time)
-            non_silent_subclips.append(subclip)
+            nonsilent_ranges = [
+                (start - padding, end + padding) for start, end in nonsilent_ranges
+            ]
 
-        logging.info(
-            f"[NON_SILENT_SUBCIPS_EXTRACTION_DONE_CONCATENATING]: {unique_uuid}"
-        )
+            non_silent_subclips = []
+            for start, end in nonsilent_ranges:
+                start_time = max(start / 1000, 0)
+                end_time = min(end / 1000, video.duration)
+                subclip = video.subclip(start_time, end_time)
+                non_silent_subclips.append(subclip)
 
-        final_video = concatenate_videoclips(non_silent_subclips, method="compose")
+            logging.info(
+                f"[NON_SILENT_SUBCIPS_EXTRACTION_DONE_CONCATENATING]: {unique_uuid}"
+            )
+
+            final_video = concatenate_videoclips(non_silent_subclips, method="compose")
+
+            # Determine durations for comparison
+            original_duration = video.duration
+            final_duration = final_video.duration
+
+            logging.info(
+                f"Original duration: {original_duration}, Final duration: {final_duration}"
+            )
+
+            if (
+                original_duration > final_duration
+                or final_duration < 0.95 * original_duration
+            ):
+                break
+
+            silence_threshold = compute_silence_threshold(audio_file)
+
+        logging.info(f"Silence threshold: {silence_threshold}")
 
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
