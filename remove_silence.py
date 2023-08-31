@@ -64,7 +64,8 @@ def remove_silence(
 
         audio_segment = AudioSegment.from_file(audio_file)
 
-        while True:
+        loop_counter = 0
+        while loop_counter < 2:
             logging.info(f"Silence threshold: {silence_threshold}")
 
             nonsilent_ranges = detect_nonsilent(
@@ -105,6 +106,7 @@ def remove_silence(
                 break
 
             silence_threshold = compute_silence_threshold(audio_file)
+            loop_counter += 1
 
         logging.info(f"Silence threshold: {silence_threshold}")
 
