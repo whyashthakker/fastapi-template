@@ -66,8 +66,6 @@ def remove_silence(
 
         loop_counter = 0
         while loop_counter < 2:
-            logging.info(f"Silence threshold: {silence_threshold}")
-
             nonsilent_ranges = detect_nonsilent(
                 audio_segment,
                 min_silence_len=min_silence_duration,
@@ -95,20 +93,14 @@ def remove_silence(
             original_duration = video.duration
             final_duration = final_video.duration
 
-            logging.info(
-                f"Original duration: {original_duration}, Final duration: {final_duration}"
-            )
-
             if (
                 original_duration > final_duration
-                or final_duration < 0.95 * original_duration
+                and final_duration < 0.95 * original_duration
             ):
                 break
 
             silence_threshold = compute_silence_threshold(audio_file)
             loop_counter += 1
-
-        logging.info(f"Silence threshold: {silence_threshold}")
 
         temp_videofile_path = os.path.join(temp_dir, "temp_videofile.mp4")
 
