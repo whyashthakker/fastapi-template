@@ -29,7 +29,7 @@ def process_audio(
 
     while attempts < max_attempts:
         try:
-            output_audio_s3_url = remove_silence(
+            output_audio_s3_url = remove_silence_audio(
                 temp_dir,
                 input_audio_url,
                 unique_uuid,

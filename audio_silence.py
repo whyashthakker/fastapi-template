@@ -3,22 +3,21 @@ from pydub.silence import detect_nonsilent
 import logging
 import os
 from file_operations import *
-import subprocess
 import shutil
 from dotenv import load_dotenv
 from s3_operations import upload_to_s3
 from utils.safeprocess import safe_process
 
 # from utils.safeprocess import safe_process
-from utils.file_standardiser import convert_to_standard_format
 from utils.metrics import compute_audio_metrics
+from utils.detect_silence_threshold import compute_silence_threshold
 
 # Load the environment variables
 load_dotenv()
 
 
 @safe_process
-def remove_silence(
+def remove_silence_audio(
     temp_dir,
     input_audio_url,
     unique_uuid,
@@ -42,22 +41,38 @@ def remove_silence(
 
         audio_segment = AudioSegment.from_file(input_audio_local_path)
 
-        nonsilent_ranges = detect_nonsilent(
-            audio_segment,
-            min_silence_len=min_silence_duration,
-            silence_thresh=silence_threshold,
-        )
+        loop_counter = 0
+        while loop_counter < 2:
+            nonsilent_ranges = detect_nonsilent(
+                audio_segment,
+                min_silence_len=min_silence_duration,
+                silence_thresh=silence_threshold,
+            )
 
-        nonsilent_ranges = [
-            (start - padding, end + padding) for start, end in nonsilent_ranges
-        ]
+            nonsilent_ranges = [
+                (start - padding, end + padding) for start, end in nonsilent_ranges
+            ]
 
-        logging.info(f"[NON_SILENT_RANGES_CONCATENATED]: {unique_uuid}.")
+            logging.info(f"[NON_SILENT_RANGES_CONCATENATED]: {unique_uuid}.")
 
-        concatenated_audio = AudioSegment.empty()
+            concatenated_audio = AudioSegment.empty()
+            for start, end in nonsilent_ranges:
+                concatenated_audio += audio_segment[start:end]
 
-        for start, end in nonsilent_ranges:
-            concatenated_audio += audio_segment[start:end]
+            # Determine durations for comparison
+            original_duration = len(audio_segment) / 1000  # pydub works in milliseconds
+            final_duration = len(concatenated_audio) / 1000
+
+            if (
+                original_duration > final_duration
+                and final_duration < 0.95 * original_duration
+            ):
+                logging.info(f"silence_threshold: {silence_threshold}")
+                break
+
+            silence_threshold = compute_silence_threshold(input_audio_local_path)
+            logging.info(f"silence_threshold: {silence_threshold}")
+            loop_counter += 1
 
         output_audio_local_path = os.path.join(temp_dir, "output" + file_extension)
         concatenated_audio.export(output_audio_local_path, format="wav")
@@ -86,12 +101,13 @@ def remove_silence(
             shutil.rmtree(temp_dir)
 
         # Compute metrics for audio based on nonsilent_ranges and audio duration
-        metrics = compute_audio_metrics(
-            audio_segment.duration_seconds, nonsilent_ranges
-        )
+        metrics = compute_audio_metrics(original_duration, nonsilent_ranges)
 
         return presignedUrl, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing audio {input_audio_url}. Error: {str(e)}")
         raise
+
+
+# Note: The placeholder function compute_silence_threshold is added as an argument, and it should be replaced with the actual function you use.
