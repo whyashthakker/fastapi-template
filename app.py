@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 # Third-party libraries
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from fastapi import HTTPException, Header, Depends
 
@@ -21,6 +21,7 @@ from file_operations import *
 from communication import *
 from audio_processing import process_audio
 from video_processing import process_video
+from file_duration import *
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -36,6 +37,7 @@ class VideoItem(BaseModel):
     min_silence_duration: Optional[int] = 300
     padding: Optional[int] = 300
     userId: Optional[str] = None
+    available_credits: Optional[float] = None
 
 
 class AudioItem(BaseModel):
@@ -44,6 +46,10 @@ class AudioItem(BaseModel):
     silence_threshold: Optional[float] = -36
     min_silence_duration: Optional[int] = 300
     padding: Optional[int] = 300
+
+
+class VideoDurationItem(BaseModel):
+    video_url: str
 
 
 def verify_authorization_key(authorization_key: str = Header(...)):
@@ -64,14 +70,27 @@ async def remove_silence_route(
     min_silence_duration = item.min_silence_duration
     padding = item.padding
     userId = item.userId
+    available_credits = item.available_credits
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
-        trigger_webhook(None, None, error_message="Please share a valid video URL.")
-        return {
-            "status": "Failed to initiate video processing. Please share a valid video URL.",
-            "error_message": "Please share a valid video URL.",
-        }
+        raise HTTPException(status_code=400, detail="Please share a valid video URL.")
+
+    duration = get_video_duration(input_video_url)
+    cost = calculate_cost(duration)
+
+    logging.info(f"Video duration: {duration}, cost: {cost}")
+
+    if available_credits < cost:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "Failed to initiate video processing.",
+                "error_message": "Insufficient credits for the video duration.",
+                "video_duration": duration,
+                "cost": cost,
+            },
+        )
 
     unique_uuid = str(uuid4())
     temp_dir = tempfile.mkdtemp()
@@ -104,6 +123,8 @@ async def remove_silence_route(
     return {
         "status": "Video processing started. You will be notified by email once it's done.",
         "request_id": unique_uuid,
+        "video_duration": duration,
+        "cost": cost,
     }
 
 

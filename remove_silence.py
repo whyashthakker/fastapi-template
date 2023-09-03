@@ -13,7 +13,10 @@ from s3_operations import upload_to_s3
 # from utils.safeprocess import safe_process
 from utils.file_standardiser import convert_to_standard_format
 from utils.metrics import compute_video_metrics
-from utils.detect_silence_threshold import compute_silence_threshold
+from utils.detect_silence_threshold import (
+    compute_silence_threshold,
+    compute_dynamic_silence_threshold,
+)
 
 # Load the environment variables
 load_dotenv()
@@ -64,6 +67,10 @@ def remove_silence(
 
         audio_segment = AudioSegment.from_file(audio_file)
 
+        # silence_threshold = compute_dynamic_silence_threshold(audio_file)
+
+        logging.info(f"[SILENCE_THRESHOLD]: {silence_threshold}")
+
         loop_counter = 0
         while loop_counter < 2:
             nonsilent_ranges = detect_nonsilent(
@@ -93,9 +100,13 @@ def remove_silence(
             original_duration = video.duration
             final_duration = final_video.duration
 
+            logging.info(
+                f"[ORIGINAL_DURATION]: {original_duration} [FINAL_DURATION]: {final_duration}"
+            )
+
             if (
                 original_duration > final_duration
-                and final_duration < 0.95 * original_duration
+                and original_duration * 0.9 > final_duration
             ):
                 break
 
