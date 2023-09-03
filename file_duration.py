@@ -27,8 +27,6 @@ def get_video_duration(url: str) -> float:
         # Log the unexpected output for debugging
         print(f"Unexpected ffprobe output: {output}")
 
-        # You can either raise an exception or return a default value.
-        # Here, raising an exception to indicate something went wrong.
         raise ValueError("Failed to retrieve video duration from ffprobe output.")
 
     logging.info(f"Video duration: {float(output['format']['duration'])}")
