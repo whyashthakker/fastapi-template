@@ -39,5 +39,6 @@ def has_sufficient_credits(video_url: str, available_credits: float) -> bool:
     return available_credits > duration
 
 
-def calculate_cost(duration: float) -> int:
-    return math.ceil(duration / 60)
+def calculate_cost(duration: float) -> float:
+    cost = duration / 60
+    return round(cost, 2)
