@@ -33,8 +33,8 @@ def send_email(email, video_url):
                 
                 <ul>
                     <li><a href="{video_url}">Download your video</a></li>
-                    <li>Check the job status and download from your <a href="https://app.videosilenceremover.com/video-silence-remover">dashboard</a></li>
-                    <li>Want to process another video? <a href="https://app.videosilenceremover.com/video-silence-remover">Upload another video</a></li>
+                    <li>Check the job status and download from your <a href="https://app.snapy.ai/video-silence-remover">dashboard</a></li>
+                    <li>Want to process another video? <a href="https://app.snapy.ai/video-silence-remover">Upload another video</a></li>
                 </ul>
                 
                 <p>If you have any questions, feel free to reach out to our <a href="mailto:support@snapy.ai">support team</a>.</p>
