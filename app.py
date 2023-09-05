@@ -78,9 +78,6 @@ async def remove_silence_route(
 
     duration = get_video_duration(input_video_url)
     cost = calculate_cost(duration)
-
-    logging.info(f"Video duration: {duration}, cost: {cost}")
-
     if available_credits < cost:
         raise HTTPException(
             status_code=403,
