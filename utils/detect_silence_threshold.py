@@ -25,7 +25,7 @@ def compute_silence_threshold(audio_path):
         raise ValueError("Unable to extract mean volume from FFmpeg output.")
 
     # Set the silence threshold to be slightly above the mean volume (e.g., 5 dB more)
-    silence_threshold = mean_volume - 5
+    silence_threshold = mean_volume - 8
 
     logging.info(f"Computed silence threshold: {silence_threshold}")
 
