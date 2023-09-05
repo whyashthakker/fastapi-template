@@ -46,6 +46,8 @@ class AudioItem(BaseModel):
     silence_threshold: Optional[float] = -36
     min_silence_duration: Optional[int] = 300
     padding: Optional[int] = 300
+    userId: Optional[str] = None
+    available_credits: Optional[float] = None
 
 
 class VideoDurationItem(BaseModel):
@@ -76,7 +78,7 @@ async def remove_silence_route(
         logging.error("input_video_url is None.")
         raise HTTPException(status_code=400, detail="Please share a valid video URL.")
 
-    duration = get_video_duration(input_video_url)
+    duration = get_media_duration(input_video_url)
     cost = calculate_cost(duration)
     if available_credits < cost:
         raise HTTPException(
@@ -132,6 +134,8 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     silence_threshold = item.silence_threshold
     min_silence_duration = item.min_silence_duration
     padding = item.padding
+    userId = item.userId
+    available_credits = item.available_credits
 
     if input_audio_url is None:
         logging.error("input_audio_url is None.")
@@ -141,9 +145,18 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
             "error_message": "Please share a valid audio URL.",
         }
 
+    duration = get_media_duration(input_audio_url)
+    cost = calculate_cost(duration)
+    if available_credits < cost:
+        return {
+            "status": "Failed to initiate audio processing.",
+            "error_message": "Insufficient credits for the audio duration.",
+            "audio_duration": duration,
+            "cost": cost,
+        }
+
     unique_uuid = str(uuid4())
     temp_dir = tempfile.mkdtemp()
-    logging.info(f"Started audio")
 
     try:
         process_audio.apply_async(
@@ -172,4 +185,6 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     return {
         "status": "Audio processing started. You will be notified by email once it's done.",
         "request_id": unique_uuid,
+        "audio_duration": duration,
+        "cost": cost,
     }

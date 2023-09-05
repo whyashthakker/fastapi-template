@@ -1,10 +1,12 @@
 import subprocess
 import json
 import logging
-import math
 
 
-def get_video_duration(url: str) -> float:
+def get_media_duration(url: str) -> float:
+    """
+    Gets the duration of an audio or video file using ffprobe.
+    """
     cmd = [
         "ffprobe",
         "-v",
@@ -24,18 +26,16 @@ def get_video_duration(url: str) -> float:
     logging.info(f"FFprobe stderr: {result.stderr}")
 
     if "format" not in output or "duration" not in output["format"]:
-        # Log the unexpected output for debugging
-        print(f"Unexpected ffprobe output: {output}")
+        logging.error(f"Unexpected ffprobe output: {output}")
+        raise ValueError("Failed to retrieve media duration from ffprobe output.")
 
-        raise ValueError("Failed to retrieve video duration from ffprobe output.")
-
-    logging.info(f"Video duration: {float(output['format']['duration'])}")
+    logging.info(f"Media duration: {float(output['format']['duration'])}")
 
     return float(output["format"]["duration"])
 
 
-def has_sufficient_credits(video_url: str, available_credits: float) -> bool:
-    duration = get_video_duration(video_url)
+def has_sufficient_credits(media_url: str, available_credits: float) -> bool:
+    duration = get_media_duration(media_url)
     return available_credits > duration
 
 
