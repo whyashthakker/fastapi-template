@@ -69,8 +69,6 @@ def remove_silence(
 
         # silence_threshold = compute_dynamic_silence_threshold(audio_file)
 
-        logging.info(f"[SILENCE_THRESHOLD]: {silence_threshold}")
-
         loop_counter = 0
         while loop_counter < 2:
             nonsilent_ranges = detect_nonsilent(
