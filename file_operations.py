@@ -10,7 +10,6 @@ retry(attempts=3, delay=5)
 
 def download_file(url, dest_path):
     try:
-        # Ensure the directory exists
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
 
         r = requests.get(url, stream=True)
