@@ -16,6 +16,7 @@ def process_audio(
     min_silence_duration=300,
     padding=300,
     userId=None,
+    remove_background_noise=False,
 ):
     logging.info(
         f"[AUDIO_PROCESSING_STARTING]: {input_audio_url}, {unique_uuid}. [USER]: {userId}"
@@ -36,6 +37,8 @@ def process_audio(
                 silence_threshold,
                 min_silence_duration,
                 padding,
+                userId,
+                remove_background_noise,
             )
             logging.info(
                 f"[AUDIO_PROCESSING_COMPLETED]: {output_audio_s3_url} {unique_uuid}."

@@ -16,6 +16,7 @@ def process_video(
     min_silence_duration=300,
     padding=300,
     userId=None,
+    remove_background_noise=False,
 ):
     logging.info(
         f"[VIDEO_PROCESSING_STARTING]: {input_video_url}, {unique_uuid}. [USER]: {userId}"
@@ -37,6 +38,7 @@ def process_video(
                 min_silence_duration,
                 padding,
                 userId,
+                remove_background_noise,
             )
             logging.info(
                 f"[VIDEO_PROCESSING_COMPLETED]: {output_video_s3_url} {unique_uuid}."

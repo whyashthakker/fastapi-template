@@ -38,6 +38,7 @@ class VideoItem(BaseModel):
     padding: Optional[int] = 300
     userId: Optional[str] = None
     available_credits: Optional[float] = None
+    remove_background_noise: Optional[bool] = False
 
 
 class AudioItem(BaseModel):
@@ -48,6 +49,7 @@ class AudioItem(BaseModel):
     padding: Optional[int] = 300
     userId: Optional[str] = None
     available_credits: Optional[float] = None
+    remove_background_noise: Optional[bool] = False
 
 
 class VideoDurationItem(BaseModel):
@@ -73,6 +75,7 @@ async def remove_silence_route(
     padding = item.padding
     userId = item.userId
     available_credits = item.available_credits
+    remove_background_noise = item.remove_background_noise
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
@@ -105,6 +108,7 @@ async def remove_silence_route(
                 min_silence_duration,
                 padding,
                 userId,
+                remove_background_noise,
             )
         )
     except Exception as e:
@@ -136,6 +140,7 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     padding = item.padding
     userId = item.userId
     available_credits = item.available_credits
+    remove_background_noise = item.remove_background_noise
 
     if input_audio_url is None:
         logging.error("input_audio_url is None.")
@@ -168,6 +173,8 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
                 silence_threshold,
                 min_silence_duration,
                 padding,
+                userId,
+                remove_background_noise,
             )
         )
     except Exception as e:

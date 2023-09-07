@@ -12,6 +12,8 @@ from utils.safeprocess import safe_process
 from utils.metrics import compute_audio_metrics
 from utils.detect_silence_threshold import compute_silence_threshold
 
+from background_noise import clean_background_noise
+
 # Load the environment variables
 load_dotenv()
 
@@ -25,6 +27,7 @@ def remove_silence_audio(
     min_silence_duration=300,
     padding=100,
     userId=None,
+    remove_background_noise=False,
 ):
     try:
         logging.info(f"[AUDIO_REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
@@ -39,9 +42,17 @@ def remove_silence_audio(
         input_audio_local_path = os.path.join(temp_dir, original_name)
         download_file(input_audio_url, input_audio_local_path)
 
+        # Load the audio
         audio_segment = AudioSegment.from_file(input_audio_local_path)
 
+        # If remove_background_noise is True, process the audio to remove noise
+        if remove_background_noise:
+            denoised_audio_file = os.path.join(temp_dir, "denoised_audio.wav")
+            clean_background_noise(input_audio_local_path, denoised_audio_file)
+            audio_segment = AudioSegment.from_file(denoised_audio_file)
+
         loop_counter = 0
+
         while loop_counter < 2:
             nonsilent_ranges = detect_nonsilent(
                 audio_segment,
@@ -108,6 +119,3 @@ def remove_silence_audio(
     except Exception as e:
         logging.error(f"Error processing audio {input_audio_url}. Error: {str(e)}")
         raise
-
-
-# Note: The placeholder function compute_silence_threshold is added as an argument, and it should be replaced with the actual function you use.

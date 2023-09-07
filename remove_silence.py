@@ -18,6 +18,8 @@ from utils.detect_silence_threshold import (
     compute_dynamic_silence_threshold,
 )
 
+from background_noise import clean_background_noise
+
 # Load the environment variables
 load_dotenv()
 
@@ -30,6 +32,7 @@ def remove_silence(
     min_silence_duration=300,
     padding=100,
     userId=None,
+    remove_background_noise=False,
 ):
     try:
         logging.info(f"[REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
@@ -65,7 +68,12 @@ def remove_silence(
 
         audio.write_audiofile(audio_file, logger=None)
 
-        audio_segment = AudioSegment.from_file(audio_file)
+        if remove_background_noise:
+            denoised_audio_file = os.path.join(temp_dir, "denoised_audio.wav")
+            clean_background_noise(audio_file, denoised_audio_file)
+            audio_segment = AudioSegment.from_file(denoised_audio_file)
+        else:
+            audio_segment = AudioSegment.from_file(audio_file)
 
         # silence_threshold = compute_dynamic_silence_threshold(audio_file)
 
