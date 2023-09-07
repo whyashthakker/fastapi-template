@@ -29,7 +29,7 @@ def send_email(email, video_url):
             <body>
                 <h2>🎉 Your Processed Video is Ready! 🎉 (Expires in 1 Day)</h2>
                 
-                <p>Thank you for using VideoSilenceRemover! Your video has been processed successfully. You can:</p>
+                <p>Thank you for using Snapy! Your video has been processed successfully. You can:</p>
                 
                 <ul>
                     <li><a href="{video_url}">Download your video</a></li>
