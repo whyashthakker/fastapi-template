@@ -112,7 +112,7 @@ def remove_silence(
 
             if (
                 original_duration > final_duration
-                and original_duration * 0.93 > final_duration
+                and original_duration * 0.95 > final_duration
             ):
                 break
 
