@@ -78,4 +78,3 @@ uvicorn==0.23.2
 vine==5.0.0
 wcwidth==0.2.6
 websockets==11.0.3
-yt-dlp==2023.7.6
