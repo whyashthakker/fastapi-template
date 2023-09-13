@@ -11,5 +11,5 @@ python-dotenv
 Redis
 ffmpeg-python
 flower
-soundfile
-noisereduce
+# soundfile
+# noisereduce

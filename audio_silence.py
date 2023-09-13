@@ -12,7 +12,7 @@ from utils.safeprocess import safe_process
 from utils.metrics import compute_audio_metrics
 from utils.detect_silence_threshold import compute_silence_threshold
 
-from background_noise import clean_background_noise
+# from background_noise import clean_background_noise
 
 # Load the environment variables
 load_dotenv()
@@ -45,11 +45,11 @@ def remove_silence_audio(
         # Load the audio
         audio_segment = AudioSegment.from_file(input_audio_local_path)
 
-        # If remove_background_noise is True, process the audio to remove noise
-        if remove_background_noise:
-            denoised_audio_file = os.path.join(temp_dir, "denoised_audio.wav")
-            clean_background_noise(input_audio_local_path, denoised_audio_file)
-            audio_segment = AudioSegment.from_file(denoised_audio_file)
+        # # If remove_background_noise is True, process the audio to remove noise
+        # if remove_background_noise:
+        #     denoised_audio_file = os.path.join(temp_dir, "denoised_audio.wav")
+        #     clean_background_noise(input_audio_local_path, denoised_audio_file)
+        #     audio_segment = AudioSegment.from_file(denoised_audio_file)
 
         loop_counter = 0
 
