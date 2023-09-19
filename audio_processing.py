@@ -65,7 +65,7 @@ def process_audio(
 
     if output_audio_s3_url:
         try:
-            send_email(email, output_audio_s3_url)
+            send_email(email, output_audio_s3_url, media_type="Audio")
         except Exception as e:
             logging.error(f"Failed to send email. Error: {str(e)}")
 

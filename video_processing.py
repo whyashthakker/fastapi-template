@@ -73,7 +73,7 @@ def process_video(
 
     if output_video_s3_url:
         try:
-            send_email(email, output_video_s3_url)
+            send_email(email, output_video_s3_url, media_type="Video")
         except Exception as e:
             logging.error(f"Failed to send email. Error: {str(e)}")
 

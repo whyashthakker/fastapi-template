@@ -14,27 +14,24 @@ FAILURE_WEBHOOK_TRIGGERED = False
 
 
 @retry(attempts=3, delay=5)
-def send_email(email, video_url):
+def send_email(email, media_url, media_type="Video"):
     try:
         sender = os.environ.get("email_sender")
         password = os.environ.get("email_password")
         receiver = email
         alias = os.environ.get("email_alias")
 
-        subject = "Your processed video is ready!"
+        subject = f"Your {media_type} is Ready! 🎉 (Expires in 1 Day)"
 
         # Email body with HTML
         body = f"""
         <html>
-            <body>
-                <h2>🎉 Your Processed Video is Ready! 🎉 (Expires in 1 Day)</h2>
-                
-                <p>Thank you for using Snapy! Your video has been processed successfully. You can:</p>
+            <body>                
+                <p>Thank you for using Snapy! Your {media_type} has been processed successfully. You can:</p>
                 
                 <ul>
-                    <li><a href="{video_url}">Download your video</a></li>
-                    <li>Check the job status and download from your <a href="https://app.snapy.ai/video-silence-remover">dashboard</a></li>
-                    <li>Want to process another video? <a href="https://app.snapy.ai/video-silence-remover">Upload another video</a></li>
+                    <li>Download your file from the Jobs section: https://app.snapy.ai/{media_type.lower()}-silence-remover</li>
+                    <li> or download from this link: <a href="{media_url}">Download</a></li>
                 </ul>
                 
                 <p>If you have any questions, feel free to reach out to our <a href="mailto:support@snapy.ai">support team</a>.</p>
