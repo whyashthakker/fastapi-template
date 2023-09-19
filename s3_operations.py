@@ -23,6 +23,13 @@ s3 = boto3.client(
 )
 
 
+def determine_content_type(file_path):
+    if file_path.endswith(".wav"):
+        return "audio/wav"
+    else:
+        return "video/mp4"
+
+
 @retry(attempts=3, delay=5)
 def upload_to_s3(local_path, s3_path, userId, folder="trimmed"):
     try:
@@ -34,10 +41,14 @@ def upload_to_s3(local_path, s3_path, userId, folder="trimmed"):
         # Generate today's date in YYYY-MM-DD format
         today = datetime.now().strftime("%Y-%m-%d")
 
+        content_type = determine_content_type(local_path)
+
+        extra_args = {"ContentType": content_type}
+
         # Modify s3_path to include the userId, today's date, and the specified folder
         s3_path = f"{userId}/{today}/{folder}/{s3_path}"
 
-        s3.upload_file(local_path, BUCKET_NAME, s3_path)
+        s3.upload_file(local_path, BUCKET_NAME, s3_path, ExtraArgs=extra_args)
 
         # Generate a pre-signed URL for the uploaded file
         presigned_url = s3.generate_presigned_url(
