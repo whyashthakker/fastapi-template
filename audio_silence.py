@@ -18,6 +18,10 @@ from utils.detect_silence_threshold import compute_silence_threshold
 load_dotenv()
 
 
+def trim_url_to_extension(url, extension=".wav"):
+    return url.split(extension)[0] + extension
+
+
 @safe_process
 def remove_silence_audio(
     temp_dir,
@@ -106,6 +110,8 @@ def remove_silence_audio(
             output_audio_local_path, output_audio_s3_path, userId
         )
 
+        trimmedUrl = trim_url_to_extension(presignedUrl)
+
         logging.info(f"[AUDIO_UPLOADED]: {unique_uuid}.")
 
         if os.path.exists(temp_dir):
@@ -114,7 +120,7 @@ def remove_silence_audio(
         # Compute metrics for audio based on nonsilent_ranges and audio duration
         metrics = compute_audio_metrics(original_duration, nonsilent_ranges)
 
-        return presignedUrl, unique_uuid, metrics
+        return trimmedUrl, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing audio {input_audio_url}. Error: {str(e)}")
