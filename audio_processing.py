@@ -30,7 +30,7 @@ def process_audio(
 
     while attempts < max_attempts:
         try:
-            output_audio_s3_url = remove_silence_audio(
+            output_audio_s3_url, _, metrics = remove_silence_audio(
                 temp_dir,
                 input_audio_url,
                 unique_uuid,
@@ -70,7 +70,7 @@ def process_audio(
             logging.error(f"Failed to send email. Error: {str(e)}")
 
         try:
-            trigger_webhook(unique_uuid, output_audio_s3_url, input_audio_url)
+            trigger_webhook(unique_uuid, output_audio_s3_url, input_audio_url, metrics)
         except Exception as e:
             logging.error(f"Failed to trigger webhook. Error: {str(e)}")
 
