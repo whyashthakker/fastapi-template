@@ -76,7 +76,7 @@ def remove_silence_audio(
 
             if (
                 original_duration > final_duration
-                and final_duration < 0.95 * original_duration
+                and final_duration < 0.85 * original_duration
             ):
                 logging.info(f"silence_threshold: {silence_threshold}")
                 break
