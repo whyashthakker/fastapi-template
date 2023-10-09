@@ -40,5 +40,5 @@ def has_sufficient_credits(media_url: str, available_credits: float) -> bool:
 
 
 def calculate_cost(duration: float) -> float:
-    cost = duration / 60
+    cost = (duration / 60) * 1.5
     return round(cost, 2)
