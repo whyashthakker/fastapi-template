@@ -26,6 +26,8 @@ s3 = boto3.client(
 def determine_content_type(file_path):
     if file_path.endswith(".wav"):
         return "audio/wav"
+    elif file_path.endswith(".mp3"):
+        return "audio/mpeg"
     else:
         return "video/mp4"
 

@@ -35,7 +35,10 @@ def remove_silence_audio(
         logging.info(f"[AUDIO_REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
 
         original_name = os.path.basename(input_audio_url.split("?")[0])
+        print(original_name)
         original_name = sanitize_filename(original_name)
+
+        print(original_name)
 
         _, file_extension = os.path.splitext(original_name)
         if not file_extension:
@@ -44,10 +47,14 @@ def remove_silence_audio(
         input_audio_local_path = os.path.join(temp_dir, original_name)
         download_file(input_audio_url, input_audio_local_path)
 
+        converted_audio_path = os.path.join(temp_dir, "converted_to_wav.wav")
+        audio_segment = AudioSegment.from_file(input_audio_local_path)
+        audio_segment.export(converted_audio_path, format="wav")
+
         # # If remove_background_noise is True, process the audio to remove noise
         if remove_background_noise:
             denoised_audio_file = denoise_audio_spectral_subtraction(
-                input_audio_local_path
+                converted_audio_path
             )
             audio_segment = AudioSegment.from_file(denoised_audio_file)
 
@@ -93,9 +100,7 @@ def remove_silence_audio(
 
         logging.info(f"[AUDIO_EXPORTED]: {unique_uuid}.")
 
-        output_audio_s3_path = (
-            f"{unique_uuid}_output{os.path.splitext(original_name)[1]}"
-        )
+        output_audio_s3_path = f"{unique_uuid}_output.wav"
 
         # original_audio_s3_path = (
         # f"{unique_uuid}_original{os.path.splitext(original_name)[1]}"

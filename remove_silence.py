@@ -71,7 +71,6 @@ def remove_silence(
         audio.write_audiofile(audio_file, logger=None)
 
         if remove_background_noise:
-            denoised_audio_file = os.path.join(temp_dir, "denoised_audio.wav")
             denoised_audio_file = denoise_audio_spectral_subtraction(audio_file)
             audio_segment = AudioSegment.from_file(denoised_audio_file)
         else:
