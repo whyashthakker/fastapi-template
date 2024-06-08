@@ -17,6 +17,7 @@ def process_video(
     padding=300,
     userId=None,
     remove_background_noise=False,
+    run_locally=False,
 ):
     logging.info(
         f"[VIDEO_PROCESSING_STARTING]: {input_video_url}, {unique_uuid}. [USER]: {userId}"
@@ -39,6 +40,8 @@ def process_video(
                 padding,
                 userId,
                 remove_background_noise,
+                generate_xml=False,
+                run_locally=run_locally,
             )
             logging.info(
                 f"[VIDEO_PROCESSING_COMPLETED]: {output_video_s3_url} {unique_uuid}."
@@ -71,22 +74,25 @@ def process_video(
                 shutil.rmtree(temp_dir)
                 logging.info(f"[TEMP_DIR_REMOVED] for {unique_uuid}")
 
-    if output_video_s3_url:
-        try:
-            send_email(email, output_video_s3_url, media_type="Video")
-        except Exception as e:
-            logging.error(f"Failed to send email. Error: {str(e)}")
+    if not run_locally:
+        if output_video_s3_url:
+            try:
+                send_email(email, output_video_s3_url, media_type="Video")
+            except Exception as e:
+                logging.error(f"Failed to send email. Error: {str(e)}")
 
-        try:
-            trigger_webhook(unique_uuid, output_video_s3_url, input_video_url, metrics)
-        except Exception as e:
-            logging.error(f"Failed to trigger webhook. Error: {str(e)}")
+            try:
+                trigger_webhook(
+                    unique_uuid, output_video_s3_url, input_video_url, metrics
+                )
+            except Exception as e:
+                logging.error(f"Failed to trigger webhook. Error: {str(e)}")
 
-    else:
-        try:
-            send_failure_webhook(
-                error_message or "Unknown error occurred during video processing.",
-                unique_uuid,
-            )
-        except Exception as e:
-            logging.error(f"Failed to send failure webhook. Error: {str(e)}")
+        else:
+            try:
+                send_failure_webhook(
+                    error_message or "Unknown error occurred during video processing.",
+                    unique_uuid,
+                )
+            except Exception as e:
+                logging.error(f"Failed to send failure webhook. Error: {str(e)}")

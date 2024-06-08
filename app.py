@@ -8,6 +8,7 @@ import logging
 from uuid import uuid4
 from typing import Optional
 from dotenv import load_dotenv
+from time import sleep
 
 # Third-party libraries
 
@@ -39,6 +40,8 @@ class VideoItem(BaseModel):
     userId: Optional[str] = None
     available_credits: Optional[float] = None
     remove_background_noise: Optional[bool] = False
+    run_locally: Optional[bool] = False
+    run_bulk_locally: Optional[bool] = False
 
 
 class AudioItem(BaseModel):
@@ -50,6 +53,12 @@ class AudioItem(BaseModel):
     userId: Optional[str] = None
     available_credits: Optional[float] = None
     remove_background_noise: Optional[bool] = False
+    run_locally: Optional[bool] = False
+    run_bulk_locally: Optional[bool] = False
+    task_type: Optional[str] = "remove_silence_audio"
+    loop_count: Optional[int] = None
+    loop_duration: Optional[int] = None
+    output_format: Optional[str] = "wav"
 
 
 class VideoDurationItem(BaseModel):
@@ -76,52 +85,91 @@ async def remove_silence_route(
     userId = item.userId
     available_credits = item.available_credits
     remove_background_noise = item.remove_background_noise
+    run_locally = item.run_locally
+    run_bulk_locally = item.run_bulk_locally
+    duration = 0
+    cost = 0
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
         raise HTTPException(status_code=400, detail="Please share a valid video URL.")
 
-    duration = get_media_duration(input_video_url)
-    cost = calculate_cost(duration)
-    if available_credits < cost:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "Failed to initiate video processing.",
-                "error_message": "Insufficient credits for the video duration.",
-                "video_duration": duration,
-                "cost": cost,
-            },
-        )
+    if not (run_locally or run_bulk_locally):
+        duration = get_media_duration(input_video_url)
+        cost = calculate_cost(duration)
+        if available_credits < cost:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "status": "Failed to initiate video processing.",
+                    "error_message": "Insufficient credits for the video duration.",
+                    "video_duration": duration,
+                    "cost": cost,
+                },
+            )
 
     unique_uuid = str(uuid4())
-    temp_dir = tempfile.mkdtemp()
+    # temp_dir = tempfile.mkdtemp()
 
-    try:
-        process_video.apply_async(
-            (
-                temp_dir,
-                input_video_url,
-                email,
-                unique_uuid,
-                silence_threshold,
-                min_silence_duration,
-                padding,
-                userId,
-                remove_background_noise,
+    if run_bulk_locally:
+        all_files = look_for_mp4_files_locally(
+            input_video_url
+        )  # Ensure this gets the correct path
+        for file in all_files:
+            sleep(5)
+            unique_uuid_for_file = str(uuid4())  # Generate a unique UUID for each file
+            try:
+                temp_dir = (
+                    tempfile.mkdtemp()
+                )  # Create a new temp directory for each file
+                process_video.apply_async(
+                    (
+                        temp_dir,
+                        file,  # Use the current file in the loop
+                        email,
+                        unique_uuid_for_file,
+                        silence_threshold,
+                        min_silence_duration,
+                        padding,
+                        userId,
+                        remove_background_noise,
+                        True,  # run_locally should be True here
+                    )
+                )
+            except Exception as e:
+                logging.error(
+                    f"Failed to initiate video processing for {file}. Error: {str(e)}"
+                )
+                trigger_webhook(unique_uuid, None, None, error_message=str(e))
+                # Consider how to handle partial failures
+            finally:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
+    else:
+        # Process a single file
+        try:
+            temp_dir = tempfile.mkdtemp()
+            process_video.apply_async(
+                (
+                    temp_dir,
+                    input_video_url,
+                    email,
+                    unique_uuid,
+                    silence_threshold,
+                    min_silence_duration,
+                    padding,
+                    userId,
+                    remove_background_noise,
+                    run_locally,
+                )
             )
-        )
-    except Exception as e:
-        logging.error(f"Failed to initiate video processing. Error: {str(e)}")
-        trigger_webhook(unique_uuid, None, None, error_message=str(e))
-        return {
-            "status": "Failed to initiate video processing.",
-            "error_message": str(e),
-        }
-    finally:
-        # Cleanup temp_dir
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        except Exception as e:
+            logging.error(f"Failed to initiate video processing. Error: {str(e)}")
+            trigger_webhook(unique_uuid, None, None, error_message=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
 
     return {
         "status": "Video processing started. You will be notified by email once it's done.",
@@ -141,6 +189,12 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     userId = item.userId
     available_credits = item.available_credits
     remove_background_noise = item.remove_background_noise
+    task_type = item.task_type
+    run_locally = item.run_locally
+    run_bulk_locally = item.run_bulk_locally
+    loop_count = item.loop_count
+    loop_duration = item.loop_duration
+    output_format = item.output_format
 
     if input_audio_url is None:
         logging.error("input_audio_url is None.")
@@ -175,6 +229,12 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
                 padding,
                 userId,
                 remove_background_noise,
+                run_locally,
+                run_bulk_locally,
+                task_type,
+                loop_count,
+                loop_duration,
+                output_format,
             )
         )
     except Exception as e:

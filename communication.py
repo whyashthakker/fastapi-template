@@ -16,6 +16,33 @@ FAILURE_WEBHOOK_TRIGGERED = False
 @retry(attempts=3, delay=5)
 def send_email(email, media_url, media_type="Video"):
     try:
+        # Try sending via API first
+        url = "https://app.loops.so/api/v1/transactional"
+        token = os.environ.get("LOOPS_API_TOKEN")
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {token}",  # Correctly prefixing with "Bearer "
+        }
+        payload = {
+            "transactionalId": "clo01eqxa00hbmj0obnmgn03n",
+            "email": email,
+            "dataVariables": {
+                "download_link": media_url,
+                "media_type": media_type,
+                "dashboard_link": f"https://app.snapy.ai/{media_type.lower()}-silence-remover",
+            },
+        }
+
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()  # Raises an exception for non-200 status codes
+        logging.info(f"[API_EMAIL_SENT] to {email}")
+
+    except Exception as e:
+        logging.warning(
+            f"API failed for {email}. Error: {str(e)}. Falling back to SMTP."
+        )
+
+        # Falling back to SMTP
         sender = os.environ.get("email_sender")
         password = os.environ.get("email_password")
         receiver = email
@@ -34,7 +61,7 @@ def send_email(email, media_url, media_type="Video"):
                     <li> or download from this link: <a href="{media_url}">Download</a></li>
                 </ul>
                 
-                <p>If you have any questions, feel free to reach out to our <a href="mailto:support@snapy.ai">support team</a>.</p>
+                <p>If you have any questions, feel free to reach out to our <a href="mailto:{sender}">support team</a>.</p>
                 
                 <p>Warm Regards,</p>
                 <p>Snapy Team</p>
@@ -58,10 +85,7 @@ def send_email(email, media_url, media_type="Video"):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
             smtp.login(sender, password)
             smtp.sendmail(sender, receiver, message.as_string())
-            logging.info(f"[EMAIL_SENT]")
-    except smtplib.SMTPException as e:
-        logging.error(f"Error sending email to {email}. Error: {str(e)}")
-        raise
+            logging.info(f"[SMTP_EMAIL_SENT] to {email}")
 
 
 @retry(attempts=3, delay=5)

@@ -18,7 +18,7 @@ from utils.detect_silence_threshold import (
     compute_dynamic_silence_threshold,
 )
 
-from generate_xml import generate_premiere_xml
+from generate_xml import generate_fcp7_xml
 
 from background_noise import denoise_audio_spectral_subtraction
 
@@ -38,7 +38,6 @@ def remove_silence(
     userId=None,
     remove_background_noise=False,
     generate_xml=False,
-    run_locally=False,
 ):
     try:
         logging.info(f"[REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
@@ -53,8 +52,7 @@ def remove_silence(
             original_name += ".mp4"  # Add the file extension only if not present
 
         input_video_local_path = os.path.join(temp_dir, original_name)
-
-        download_file(input_video_url, input_video_local_path, run_locally=run_locally)
+        download_file(input_video_url, input_video_local_path)
 
         input_video_file_name = get_unique_filename(original_name)
 
@@ -64,10 +62,9 @@ def remove_silence(
 
         os.environ["MOVIEPY_TEMP_FOLDER"] = temp_dir
 
-        if not run_locally:
-            unique_video_local_path = convert_to_standard_format(
-                unique_video_local_path, temp_dir
-            )
+        unique_video_local_path = convert_to_standard_format(
+            unique_video_local_path, temp_dir
+        )
 
         video = VideoFileClip(unique_video_local_path)
 
@@ -98,37 +95,7 @@ def remove_silence(
 
             if generate_xml:
                 xml_output_path = os.path.join(temp_dir, f"{unique_uuid}_cuts.xml")
-                generate_premiere_xml(
-                    sequence_name=f"{unique_uuid}_sequence",
-                    video_file_name=input_video_file_name,
-                    video_file_path=unique_video_local_path,
-                    video_duration=video.duration,
-                    nonsilent_ranges=nonsilent_ranges,
-                    output_path=xml_output_path,
-                    width=video.size[0],
-                    height=video.size[1],
-                )
-
-                if run_locally:
-                    original_dir = os.path.dirname(input_video_url)
-                    local_save_path = os.path.join(
-                        original_dir, f"{unique_uuid}_cuts.xml"
-                    )
-                    shutil.copyfile(xml_output_path, local_save_path)
-                    logging.info(f"[SAVED_LOCALLY]: {local_save_path}")
-                else:
-                    xml_s3_path = f"{unique_uuid}_cuts.xml"
-                    logging.info(f"[UPLOADING_XML_TO_S3]: {unique_uuid}")
-                    presignedUrl = upload_to_s3(xml_output_path, xml_s3_path, userId)
-
-                if os.path.exists(temp_dir):
-                    shutil.rmtree(temp_dir)
-
-                return (
-                    local_save_path if run_locally else presignedUrl,
-                    unique_uuid,
-                    None,
-                )
+                generate_fcp7_xml(nonsilent_ranges, video.duration, xml_output_path)
 
             non_silent_subclips = []
             for start, end in nonsilent_ranges:
@@ -181,11 +148,7 @@ def remove_silence(
             temp_audiofile=temp_audiofile_path,
         )
 
-        if not run_locally:
-            metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
-
-        else:
-            metrics = None
+        metrics = compute_video_metrics(video, final_video, nonsilent_ranges)
 
         audio_with_fps = final_video.audio.set_fps(video.audio.fps)
 
@@ -208,69 +171,28 @@ def remove_silence(
 
         video.close()
 
-        if run_locally:
-            # Extract directory and base filename from the local file path
-            original_dir = os.path.dirname(input_video_url)
-            edited_dir = os.path.join(
-                original_dir, "edited"
-            )  # Path for the /edited subfolder
-            os.makedirs(
-                edited_dir, exist_ok=True
-            )  # Create the /edited subfolder if it doesn't exist
+        output_video_s3_path = (
+            f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
+        )
 
-            original_filename = os.path.basename(input_video_url)
-            base_filename, file_extension = os.path.splitext(original_filename)
-
-            # Create the new filename with '_edited' and unique_uuid appended
-            new_filename = f"{base_filename}_{unique_uuid}_edited{file_extension}"
-
-            # Create the new file path in the /edited subdirectory
-            local_save_path = os.path.join(edited_dir, new_filename)
-
-            shutil.copyfile(output_video_local_path, local_save_path)
-            logging.info(f"[SAVED_LOCALLY]: {local_save_path}")
-
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-
-            return local_save_path, unique_uuid, metrics
-        else:
-            # S3 uploading logic
-            output_video_s3_path = (
-                f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
-            )
-            logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
-            presignedUrl = upload_to_s3(
-                output_video_local_path, output_video_s3_path, userId
-            )
-
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-
-            return presignedUrl, unique_uuid, metrics
-
-        # output_video_s3_path = (
-        #     f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
+        # original_video_s3_path = (
+        #     f"{unique_uuid}_original{os.path.splitext(input_video_file_name)[1]}"
         # )
 
-        # # original_video_s3_path = (
-        # #     f"{unique_uuid}_original{os.path.splitext(input_video_file_name)[1]}"
-        # # )
-
-        # # upload_to_s3(
-        # #     unique_video_local_path, original_video_s3_path, userId, folder="original"
-        # # )
-
-        # logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
-
-        # presignedUrl = upload_to_s3(
-        #     output_video_local_path, output_video_s3_path, userId
+        # upload_to_s3(
+        #     unique_video_local_path, original_video_s3_path, userId, folder="original"
         # )
 
-        # if os.path.exists(temp_dir):
-        #     shutil.rmtree(temp_dir)
+        logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
 
-        # return presignedUrl, unique_uuid, metrics
+        presignedUrl = upload_to_s3(
+            output_video_local_path, output_video_s3_path, userId
+        )
+
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
+        return presignedUrl, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")

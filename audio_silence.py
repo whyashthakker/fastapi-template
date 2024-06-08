@@ -102,14 +102,6 @@ def remove_silence_audio(
 
         output_audio_s3_path = f"{unique_uuid}_output.wav"
 
-        # original_audio_s3_path = (
-        # f"{unique_uuid}_original{os.path.splitext(original_name)[1]}"
-        # )
-
-        # upload_to_s3(
-        # input_audio_local_path, original_audio_s3_path, userId, folder="original"
-        # )
-
         presignedUrl = upload_to_s3(
             output_audio_local_path, output_audio_s3_path, userId
         )

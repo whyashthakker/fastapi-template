@@ -24,3 +24,5 @@ nixpacks.toml
 __pycache__/
 
 /utils/__pycache__/
+
+experiments

@@ -2,6 +2,7 @@ from celery_config import celery_app
 from file_operations import *
 from communication import *
 from audio_silence import *
+from audio_loop import *
 
 
 @celery_app.task(
@@ -17,6 +18,12 @@ def process_audio(
     padding=300,
     userId=None,
     remove_background_noise=False,
+    run_locally=False,
+    run_bulk_locally=False,
+    task_type="remove_silence_audio",
+    loop_count=None,
+    loop_duration=None,
+    output_format="wav",
 ):
     logging.info(
         f"[AUDIO_PROCESSING_STARTING]: {input_audio_url}, {unique_uuid}. [USER]: {userId}"
@@ -30,16 +37,30 @@ def process_audio(
 
     while attempts < max_attempts:
         try:
-            output_audio_s3_url, _, metrics = remove_silence_audio(
-                temp_dir,
-                input_audio_url,
-                unique_uuid,
-                silence_threshold,
-                min_silence_duration,
-                padding,
-                userId,
-                remove_background_noise,
-            )
+            if task_type == "audio_loop":
+                output_audio_s3_url, _, metrics = loop_audio(
+                    temp_dir,
+                    input_audio_url,
+                    unique_uuid,
+                    loop_count=loop_count,
+                    loop_duration=loop_duration,
+                    output_format=output_format,
+                    userId=userId,
+                )
+            elif task_type == "remove_silence_audio":
+                output_audio_s3_url, _, metrics = remove_silence_audio(
+                    temp_dir,
+                    input_audio_url,
+                    unique_uuid,
+                    silence_threshold,
+                    min_silence_duration,
+                    padding,
+                    userId,
+                    remove_background_noise,
+                )
+            else:
+                raise ValueError(f"Invalid task_type: {task_type}")
+
             logging.info(
                 f"[AUDIO_PROCESSING_COMPLETED]: {output_audio_s3_url} {unique_uuid}."
             )
