@@ -45,7 +45,8 @@ class VideoItem(BaseModel):
 
 
 class AudioItem(BaseModel):
-    input_audio: str
+    input_audio: Optional[str] = None
+    input_audio_urls: Optional[list] = None
     email: str
     silence_threshold: Optional[float] = -36
     min_silence_duration: Optional[int] = 300
@@ -182,6 +183,7 @@ async def remove_silence_route(
 @app.post("/audio-silence/")
 async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTasks):
     input_audio_url = item.input_audio
+    input_audio_urls = item.input_audio_urls
     email = item.email
     silence_threshold = item.silence_threshold
     min_silence_duration = item.min_silence_duration
@@ -196,15 +198,27 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     loop_duration = item.loop_duration
     output_format = item.output_format
 
-    if input_audio_url is None:
-        logging.error("input_audio_url is None.")
-        trigger_webhook(None, error_message="Please share a valid audio URL.")
+    if input_audio_url is None and input_audio_urls is None:
+        logging.error("Both input_audio_url and input_audio_urls are None.")
+        trigger_webhook(
+            None,
+            error_message="Please provide either input_audio_url or input_audio_urls.",
+        )
         return {
-            "status": "Failed to initiate audio processing. Please share a valid audio URL.",
-            "error_message": "Please share a valid audio URL.",
+            "status": "Failed to initiate audio processing. Please provide either input_audio_url or input_audio_urls.",
+            "error_message": "Please provide either input_audio_url or input_audio_urls.",
         }
 
-    duration = get_media_duration(input_audio_url)
+    if input_audio_urls:
+        duration = get_total_duration(input_audio_urls)
+    else:
+        duration = get_media_duration(input_audio_url)
+
+    if input_audio_urls:
+        duration = get_total_duration(input_audio_urls)
+    else:
+        duration = get_media_duration(input_audio_url)
+
     cost = calculate_cost(duration)
     if available_credits < cost:
         return {
@@ -222,6 +236,7 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
             (
                 temp_dir,
                 input_audio_url,
+                input_audio_urls,
                 email,
                 unique_uuid,
                 silence_threshold,

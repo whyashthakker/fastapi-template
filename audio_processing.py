@@ -3,6 +3,7 @@ from file_operations import *
 from communication import *
 from audio_silence import *
 from audio_loop import *
+from audio_merger import *
 
 
 @celery_app.task(
@@ -11,6 +12,7 @@ from audio_loop import *
 def process_audio(
     temp_dir,
     input_audio_url,
+    input_audio_urls,
     email,
     unique_uuid,
     silence_threshold=-30,
@@ -57,6 +59,14 @@ def process_audio(
                     padding,
                     userId,
                     remove_background_noise,
+                )
+            elif task_type == "audio_merge":
+                output_audio_s3_url, _, metrics = merge_audio_files(
+                    temp_dir,
+                    input_audio_urls,
+                    unique_uuid,
+                    output_format=output_format,
+                    userId=userId,
                 )
             else:
                 raise ValueError(f"Invalid task_type: {task_type}")
