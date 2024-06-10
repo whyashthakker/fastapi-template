@@ -4,6 +4,7 @@ from communication import *
 from audio_silence import *
 from audio_loop import *
 from audio_merger import *
+from bg_noise_removal import *
 
 
 @celery_app.task(
@@ -26,6 +27,8 @@ def process_audio(
     loop_count=None,
     loop_duration=None,
     output_format="wav",
+    noise_duration=1000,
+    amplification_factor=1.5,
 ):
     logging.info(
         f"[AUDIO_PROCESSING_STARTING]: {input_audio_url}, {unique_uuid}. [USER]: {userId}"
@@ -67,6 +70,15 @@ def process_audio(
                     unique_uuid,
                     output_format=output_format,
                     userId=userId,
+                )
+            elif task_type == "remove_noise_audio":
+                output_audio_s3_url, _, metrics = remove_background_noise_from_audio(
+                    temp_dir,
+                    input_audio_url,
+                    unique_uuid,
+                    noise_duration,
+                    amplification_factor,
+                    userId,
                 )
             else:
                 raise ValueError(f"Invalid task_type: {task_type}")
