@@ -5,6 +5,8 @@ from audio_silence import *
 from audio_loop import *
 from audio_merger import *
 from bg_noise_removal import *
+from ai_music_generation import *
+from audio_speed import *
 
 
 @celery_app.task(
@@ -29,6 +31,8 @@ def process_audio(
     output_format="wav",
     noise_duration=1000,
     amplification_factor=1.5,
+    text_prompt=None,
+    speed_factor=1.0,
 ):
     logging.info(
         f"[AUDIO_PROCESSING_STARTING]: {input_audio_url}, {unique_uuid}. [USER]: {userId}"
@@ -79,6 +83,24 @@ def process_audio(
                     noise_duration,
                     amplification_factor,
                     userId,
+                )
+            elif task_type == "ai_music_generation":
+                output_audio_s3_url, _, metrics = generate_music(
+                    temp_dir,
+                    text_prompt,
+                    unique_uuid,
+                    userId,
+                    run_locally,
+                    run_bulk_locally,
+                )
+            elif task_type == "audio_speed":
+                output_audio_s3_url, _, metrics = change_audio_speed(
+                    temp_dir,
+                    input_audio_url,
+                    unique_uuid,
+                    speed_factor=speed_factor,
+                    output_format=output_format,
+                    userId=userId,
                 )
             else:
                 raise ValueError(f"Invalid task_type: {task_type}")
