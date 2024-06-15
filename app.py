@@ -64,6 +64,8 @@ class AudioItem(BaseModel):
     amplification_factor: Optional[float] = 1.0
     text_prompt: Optional[str] = None
     speed_factor: Optional[float] = 1.0
+    background_audio_url: Optional[str] = None
+    gain_during_overlay: Optional[float] = -10
 
 
 class VideoDurationItem(BaseModel):
@@ -205,6 +207,8 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     amplification_factor = item.amplification_factor
     text_prompt = item.text_prompt
     speed_factor = item.speed_factor
+    background_audio_url = item.background_audio_url
+    gain_during_overlay = item.gain_during_overlay
 
     if input_audio_url is None and input_audio_urls is None:
         logging.error("Both input_audio_url and input_audio_urls are None.")
@@ -262,6 +266,8 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
                 amplification_factor,
                 text_prompt,
                 speed_factor,
+                background_audio_url,
+                gain_during_overlay,
             )
         )
     except Exception as e:

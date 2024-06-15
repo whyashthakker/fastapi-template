@@ -7,6 +7,7 @@ from audio_merger import *
 from bg_noise_removal import *
 from ai_music_generation import *
 from audio_speed import *
+from audio_duck import *
 
 
 @celery_app.task(
@@ -33,6 +34,8 @@ def process_audio(
     amplification_factor=1.5,
     text_prompt=None,
     speed_factor=1.0,
+    background_audio_url=None,
+    gain_during_overlay=-10,
 ):
     logging.info(
         f"[AUDIO_PROCESSING_STARTING]: {input_audio_url}, {unique_uuid}. [USER]: {userId}"
@@ -99,6 +102,16 @@ def process_audio(
                     input_audio_url,
                     unique_uuid,
                     speed_factor=speed_factor,
+                    output_format=output_format,
+                    userId=userId,
+                )
+            elif task_type == "audio_duck":
+                output_audio_s3_url, _, metrics = duck_audio(
+                    temp_dir,
+                    input_audio_url,
+                    unique_uuid,
+                    background_audio_url,
+                    gain_during_overlay=gain_during_overlay,
                     output_format=output_format,
                     userId=userId,
                 )
