@@ -34,6 +34,13 @@ def remove_silence_audio(
     try:
         logging.info(f"[AUDIO_REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
 
+        if silence_threshold is None:
+            silence_threshold = -50
+        if min_silence_duration is None:
+            min_silence_duration = 300
+        if padding is None:
+            padding = 100
+
         original_name = os.path.basename(input_audio_url.split("?")[0])
         print(original_name)
         original_name = sanitize_filename(original_name)
