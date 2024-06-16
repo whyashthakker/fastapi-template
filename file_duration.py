@@ -58,6 +58,30 @@ def has_sufficient_credits(
     return available_credits > total_duration
 
 
-def calculate_cost(duration: float) -> float:
-    cost = (duration / 60) * 1.5
-    return round(cost, 2)
+def calculate_cost(duration: float, task_type: str) -> float:
+    cost = task_level_costs(task_type)
+    running_cost = (duration / 60) * cost
+    return round(running_cost, 2)
+
+
+def task_level_costs(task_type: str) -> float:
+    if task_type == "remove_silence_video":
+        return 1.5
+    elif task_type == "generate_subtitles":
+        return 2
+    elif task_type == "audio_loop":
+        return 0.5
+    elif task_type == "remove_silence_audio":
+        return 1.0
+    elif task_type == "audio_merge":
+        return 0.8
+    elif task_type == "remove_noise_audio":
+        return 1.0
+    elif task_type == "ai_music_generation":
+        return 4.0
+    elif task_type == "audio_speed":
+        return 0.5
+    elif task_type == "audio_duck":
+        return 0.8
+    else:
+        return 1.0

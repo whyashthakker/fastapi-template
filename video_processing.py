@@ -2,6 +2,7 @@ from celery_config import celery_app
 from remove_silence import *
 from file_operations import *
 from communication import *
+from video_subtitle_generator import *
 
 
 @celery_app.task(
@@ -18,6 +19,7 @@ def process_video(
     userId=None,
     remove_background_noise=False,
     run_locally=False,
+    task_type="remove_silence_video",
 ):
     logging.info(
         f"[VIDEO_PROCESSING_STARTING]: {input_video_url}, {unique_uuid}. [USER]: {userId}"
@@ -31,22 +33,33 @@ def process_video(
 
     while attempts < max_attempts:
         try:
-            output_video_s3_url, _, metrics = remove_silence(
-                temp_dir,
-                input_video_url,
-                unique_uuid,
-                silence_threshold,
-                min_silence_duration,
-                padding,
-                userId,
-                remove_background_noise,
-                generate_xml=False,
-                run_locally=run_locally,
-            )
-            logging.info(
-                f"[VIDEO_PROCESSING_COMPLETED]: {output_video_s3_url} {unique_uuid}."
-            )
-            break
+            if task_type == "remove_silence_video":
+                output_video_s3_url, _, metrics = remove_silence(
+                    temp_dir,
+                    input_video_url,
+                    unique_uuid,
+                    silence_threshold,
+                    min_silence_duration,
+                    padding,
+                    userId,
+                    remove_background_noise,
+                    generate_xml=False,
+                    run_locally=run_locally,
+                )
+                logging.info(
+                    f"[VIDEO_PROCESSING_COMPLETED]: {output_video_s3_url} {unique_uuid}."
+                )
+                break
+            elif task_type == "generate_subtitles":
+                output_video_s3_url, _, metrics = generate_subtitles(
+                    temp_dir,
+                    input_video_url,
+                    unique_uuid,
+                    userId=userId,
+                    run_locally=run_locally,
+                )
+                logging.info(f"[VIDEO_TRANSCRIPTION_SUBTITLE_COMPLETE]: {unique_uuid}.")
+                break
 
         except Exception as e:
             # Check for the specific error and replace it with a more user-friendly message

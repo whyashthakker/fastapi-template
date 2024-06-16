@@ -42,6 +42,8 @@ class VideoItem(BaseModel):
     remove_background_noise: Optional[bool] = False
     run_locally: Optional[bool] = False
     run_bulk_locally: Optional[bool] = False
+    task_type: Optional[str] = "remove_silence_video"
+    generate_srt: Optional[bool] = False
 
 
 class AudioItem(BaseModel):
@@ -96,6 +98,7 @@ async def remove_silence_route(
     run_bulk_locally = item.run_bulk_locally
     duration = 0
     cost = 0
+    task_type = item.task_type
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
@@ -103,7 +106,7 @@ async def remove_silence_route(
 
     if not (run_locally or run_bulk_locally):
         duration = get_media_duration(input_video_url)
-        cost = calculate_cost(duration)
+        cost = calculate_cost(duration, task_type=task_type)
         if available_credits < cost:
             raise HTTPException(
                 status_code=403,
@@ -141,6 +144,7 @@ async def remove_silence_route(
                         userId,
                         remove_background_noise,
                         True,  # run_locally should be True here
+                        task_type,
                     )
                 )
             except Exception as e:
@@ -156,6 +160,7 @@ async def remove_silence_route(
         # Process a single file
         try:
             temp_dir = tempfile.mkdtemp()
+
             process_video.apply_async(
                 (
                     temp_dir,
@@ -168,6 +173,7 @@ async def remove_silence_route(
                     userId,
                     remove_background_noise,
                     run_locally,
+                    task_type,
                 )
             )
         except Exception as e:
@@ -231,7 +237,8 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     else:
         duration = get_media_duration(input_audio_url)
 
-    cost = calculate_cost(duration)
+    cost = calculate_cost(duration, task_type=task_type)
+
     if available_credits < cost:
         return {
             "status": "Failed to initiate audio processing.",
