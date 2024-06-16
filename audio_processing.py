@@ -55,6 +55,9 @@ def process_audio(
     error_messages = []
 
     if run_bulk:
+        logging.info(
+            f"[BULK_AUDIO_PROCESSING_STARTING]: {input_audio_urls}, {unique_uuid}. [USER]: {userId}"
+        )
         for input_audio_url in input_audio_urls:
             output_audio_s3_url = None
             attempts = 0

@@ -32,7 +32,7 @@ load_dotenv()
 
 
 class VideoItem(BaseModel):
-    input_video: str
+    input_video: Optional[str] = None
     email: str
     silence_threshold: Optional[float] = -36
     min_silence_duration: Optional[int] = 300
@@ -45,6 +45,7 @@ class VideoItem(BaseModel):
     task_type: Optional[str] = "remove_silence_video"
     generate_srt: Optional[bool] = False
     run_bulk: Optional[bool] = False
+    input_video_urls: Optional[list] = None
 
 
 class AudioItem(BaseModel):
@@ -102,14 +103,30 @@ async def remove_silence_route(
     cost = 0
     task_type = item.task_type
     run_bulk = item.run_bulk
+    input_video_urls = item.input_video_urls
 
-    if input_video_url is None:
-        logging.error("input_video_url is None.")
-        raise HTTPException(status_code=400, detail="Please share a valid video URL.")
+    if input_video_url is None and input_video_urls is None:
+        logging.error("Both Video and Video URLs are None.")
+        trigger_webhook(
+            None,
+            error_message="Please provide either an Input Video or Videos to proceed.",
+        )
+        return {
+            "status": "Failed to initiate audio processing. Please provide either input_video_url or input_video_urls.",
+            "error_message": "Please provide either Input Video or Input Videos to proceed.",
+        }
 
     if not (run_locally or run_bulk_locally):
-        duration = get_media_duration(input_video_url)
+        # duration = get_media_duration(input_video_url)
+        # cost = calculate_cost(duration, task_type=task_type)
+
+        if input_video_urls:
+            duration = get_total_duration(input_video_urls)
+        else:
+            duration = get_media_duration(input_video_url)
+
         cost = calculate_cost(duration, task_type=task_type)
+
         if available_credits < cost:
             raise HTTPException(
                 status_code=403,
@@ -139,6 +156,7 @@ async def remove_silence_route(
                     (
                         temp_dir,
                         file,  # Use the current file in the loop
+                        None,
                         email,
                         unique_uuid_for_file,
                         silence_threshold,
@@ -147,8 +165,8 @@ async def remove_silence_route(
                         userId,
                         remove_background_noise,
                         True,  # run_locally should be True here
+                        False,
                         task_type,
-                        run_bulk,
                     )
                 )
             except Exception as e:
@@ -169,6 +187,7 @@ async def remove_silence_route(
                 (
                     temp_dir,
                     input_video_url,
+                    input_video_urls,
                     email,
                     unique_uuid,
                     silence_threshold,
@@ -177,8 +196,8 @@ async def remove_silence_route(
                     userId,
                     remove_background_noise,
                     run_locally,
-                    task_type,
                     run_bulk,
+                    task_type,
                 )
             )
         except Exception as e:
@@ -232,11 +251,6 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
             "status": "Failed to initiate audio processing. Please provide either input_audio_url or input_audio_urls.",
             "error_message": "Please provide either input_audio_url or input_audio_urls.",
         }
-
-    if input_audio_urls:
-        duration = get_total_duration(input_audio_urls)
-    else:
-        duration = get_media_duration(input_audio_url)
 
     if input_audio_urls:
         duration = get_total_duration(input_audio_urls)

@@ -55,6 +55,7 @@ def generate_subtitles(
     unique_uuid,
     userId=None,
     run_locally=False,
+    run_bulk=False,
 ):
     try:
         logging.info(f"[GENERATE_SUBTITLES_FUNCTION_STARTED]: {unique_uuid}.")
@@ -88,7 +89,7 @@ def generate_subtitles(
         video = VideoFileClip(unique_video_local_path)
 
         # Comment out the following line to process the entire video
-        video = video.subclip(0, 20)
+        # video = video.subclip(0, 20)
 
         video_width, video_height = video.size
 
@@ -231,20 +232,27 @@ def generate_subtitles(
                 shutil.rmtree(temp_dir)
 
             return local_save_path, unique_uuid, metrics
+
         else:
-            # S3 uploading logic
-            output_video_s3_path = (
-                f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
-            )
-            logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
-            presignedUrl = upload_to_s3(
-                output_video_local_path, output_video_s3_path, userId
-            )
+            if run_bulk:
+                file_path = output_video_local_path
+            else:
+                # S3 uploading logic
+                output_video_s3_path = (
+                    f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
+                )
 
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+                logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
+                presignedUrl = upload_to_s3(
+                    output_video_local_path, output_video_s3_path, userId
+                )
 
-            return presignedUrl, unique_uuid, metrics
+                file_path = presignedUrl
+
+            # if os.path.exists(temp_dir):
+            #     shutil.rmtree(temp_dir)
+
+            return file_path, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing video {input_video_url}. Error: {str(e)}")

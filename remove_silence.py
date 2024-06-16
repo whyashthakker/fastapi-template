@@ -39,6 +39,7 @@ def remove_silence(
     remove_background_noise=False,
     generate_xml=False,
     run_locally=False,
+    run_bulk=False,
 ):
     try:
         logging.info(f"[REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
@@ -194,7 +195,8 @@ def remove_silence(
         audio_with_fps.write_audiofile(temp_audiofile_path, logger=None)
 
         output_video_local_path = os.path.join(
-            temp_dir, "output" + os.path.splitext(input_video_file_name)[1]
+            temp_dir,
+            f"output_{unique_uuid}" + os.path.splitext(input_video_file_name)[1],
         )
 
         cmd = f'ffmpeg -y -i "{os.path.normpath(temp_videofile_path)}" -i "{os.path.normpath(temp_audiofile_path)}" -c:v copy -c:a aac -strict experimental -shortest "{os.path.normpath(output_video_local_path)}" -loglevel error'
@@ -230,24 +232,31 @@ def remove_silence(
             shutil.copyfile(output_video_local_path, local_save_path)
             logging.info(f"[SAVED_LOCALLY]: {local_save_path}")
 
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+            # if os.path.exists(temp_dir):
+            #     shutil.rmtree(temp_dir)
 
             return local_save_path, unique_uuid, metrics
         else:
-            # S3 uploading logic
-            output_video_s3_path = (
-                f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
-            )
-            logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
-            presignedUrl = upload_to_s3(
-                output_video_local_path, output_video_s3_path, userId
-            )
 
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+            if run_bulk:
+                file_path = output_video_local_path
+            else:
+                # S3 uploading logic
+                output_video_s3_path = (
+                    f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
+                )
 
-            return presignedUrl, unique_uuid, metrics
+                logging.info(f"[UPLOADING_TO_S3]: {unique_uuid}")
+                presignedUrl = upload_to_s3(
+                    output_video_local_path, output_video_s3_path, userId
+                )
+
+                file_path = presignedUrl
+
+            # if os.path.exists(temp_dir):
+            #     shutil.rmtree(temp_dir)
+
+            return file_path, unique_uuid, metrics
 
         # output_video_s3_path = (
         #     f"{unique_uuid}_output{os.path.splitext(input_video_file_name)[1]}"
