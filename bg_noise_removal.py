@@ -19,6 +19,7 @@ def remove_background_noise_from_audio(
     amplification_factor=1.9,
     output_format="wav",
     userId=None,
+    run_bulk=False,
 ):
     try:
         logging.info(f"[BACKGROUND_NOISE_FUNCTION_STARTED]: {unique_uuid}.")
@@ -75,14 +76,23 @@ def remove_background_noise_from_audio(
         )  # Clip to prevent values outside int16 range
 
         # Write out the processed audio
-        cleaned_audio_local_path = os.path.join(temp_dir, f"output.{output_format}")
+        cleaned_audio_local_path = os.path.join(
+            temp_dir, f"output_{unique_uuid}.{output_format}"
+        )
+
         wavfile.write(cleaned_audio_local_path, rate, cleaned_data.astype(np.int16))
 
         # Upload the cleaned audio to S3
         output_audio_s3_path = f"{unique_uuid}_output.{output_format}"
-        presignedUrl = upload_to_s3(
-            cleaned_audio_local_path, output_audio_s3_path, userId
-        )
+
+        if run_bulk:
+            file_path = cleaned_audio_local_path
+        else:
+            output_audio_s3_path = f"{unique_uuid}_output.{output_format}"
+            presignedUrl = upload_to_s3(
+                cleaned_audio_local_path, output_audio_s3_path, userId
+            )
+            file_path = presignedUrl
 
         # Compute metrics for the cleaned audio
         cleaned_audio = AudioSegment.from_wav(cleaned_audio_local_path)
@@ -90,7 +100,7 @@ def remove_background_noise_from_audio(
 
         metrics = 0
 
-        return presignedUrl, unique_uuid, metrics
+        return file_path, unique_uuid, metrics
 
     except Exception as e:
         raise ValueError(f"Error processing audio: {str(e)}")

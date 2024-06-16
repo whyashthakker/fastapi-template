@@ -22,6 +22,7 @@ def loop_audio(
     loop_duration=None,
     output_format="wav",
     userId=None,
+    run_bulk=False,
 ):
     try:
         logging.info(f"[AUDIO_LOOP_FUNCTION_STARTED]: {unique_uuid}.")
@@ -48,21 +49,29 @@ def loop_audio(
         else:
             raise ValueError("Either loop_count or loop_duration must be provided.")
 
-        output_audio_local_path = os.path.join(temp_dir, f"output.{output_format}")
+        output_audio_local_path = os.path.join(
+            temp_dir, f"output_{unique_uuid}.{output_format}"
+        )
+
         looped_audio.export(output_audio_local_path, format=output_format)
 
         logging.info(f"[AUDIO_EXPORTED]: {unique_uuid}.")
 
         output_audio_s3_path = f"{unique_uuid}_output.{output_format}"
 
-        presignedUrl = upload_to_s3(
-            output_audio_local_path, output_audio_s3_path, userId
-        )
+        if run_bulk:
+            file_path = output_audio_local_path
+        else:
+            output_audio_s3_path = f"{unique_uuid}_output.{output_format}"
+            presignedUrl = upload_to_s3(
+                output_audio_local_path, output_audio_s3_path, userId
+            )
+            file_path = presignedUrl
 
         logging.info(f"[AUDIO_UPLOADED]: {unique_uuid}.")
 
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        # if os.path.exists(temp_dir):
+        #     shutil.rmtree(temp_dir)
 
         # Compute metrics for audio based on loop count and original duration
         metrics = {
@@ -71,7 +80,7 @@ def loop_audio(
             "final_duration": original_duration * loop_count,
         }
 
-        return presignedUrl, unique_uuid, metrics
+        return file_path, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing audio {input_audio_url}. Error: {str(e)}")

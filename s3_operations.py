@@ -28,6 +28,8 @@ def determine_content_type(file_path):
         return "audio/wav"
     elif file_path.endswith(".mp3"):
         return "audio/mpeg"
+    elif file_path.endswith(".zip"):
+        return "application/zip"
     else:
         return "video/mp4"
 

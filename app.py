@@ -44,6 +44,7 @@ class VideoItem(BaseModel):
     run_bulk_locally: Optional[bool] = False
     task_type: Optional[str] = "remove_silence_video"
     generate_srt: Optional[bool] = False
+    run_bulk: Optional[bool] = False
 
 
 class AudioItem(BaseModel):
@@ -68,6 +69,7 @@ class AudioItem(BaseModel):
     speed_factor: Optional[float] = 1.0
     background_audio_url: Optional[str] = None
     gain_during_overlay: Optional[float] = -10
+    run_bulk: Optional[bool] = False
 
 
 class VideoDurationItem(BaseModel):
@@ -99,6 +101,7 @@ async def remove_silence_route(
     duration = 0
     cost = 0
     task_type = item.task_type
+    run_bulk = item.run_bulk
 
     if input_video_url is None:
         logging.error("input_video_url is None.")
@@ -145,6 +148,7 @@ async def remove_silence_route(
                         remove_background_noise,
                         True,  # run_locally should be True here
                         task_type,
+                        run_bulk,
                     )
                 )
             except Exception as e:
@@ -174,6 +178,7 @@ async def remove_silence_route(
                     remove_background_noise,
                     run_locally,
                     task_type,
+                    run_bulk,
                 )
             )
         except Exception as e:
@@ -215,6 +220,7 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
     speed_factor = item.speed_factor
     background_audio_url = item.background_audio_url
     gain_during_overlay = item.gain_during_overlay
+    run_bulk = item.run_bulk
 
     if input_audio_url is None and input_audio_urls is None:
         logging.error("Both input_audio_url and input_audio_urls are None.")
@@ -275,6 +281,7 @@ async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTas
                 speed_factor,
                 background_audio_url,
                 gain_during_overlay,
+                run_bulk,
             )
         )
     except Exception as e:

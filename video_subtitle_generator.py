@@ -32,8 +32,6 @@ def transcribe_audio_with_openai(audiofilename):
                     timestamp_granularities=["word"],
                 )
 
-                # print(transcript)
-
             wordlevel_info = transcript.words
 
             # wordlevel_info = [

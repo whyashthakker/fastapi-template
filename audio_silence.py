@@ -30,6 +30,7 @@ def remove_silence_audio(
     padding=100,
     userId=None,
     remove_background_noise=False,
+    run_bulk=False,
 ):
     try:
         logging.info(f"[AUDIO_REMOVE_SILENCE_FUNCTION_STARTED]: {unique_uuid}.")
@@ -42,10 +43,7 @@ def remove_silence_audio(
             padding = 100
 
         original_name = os.path.basename(input_audio_url.split("?")[0])
-        print(original_name)
         original_name = sanitize_filename(original_name)
-
-        print(original_name)
 
         _, file_extension = os.path.splitext(original_name)
         if not file_extension:
@@ -102,26 +100,32 @@ def remove_silence_audio(
             logging.info(f"silence_threshold: {silence_threshold}")
             loop_counter += 1
 
-        output_audio_local_path = os.path.join(temp_dir, "output" + file_extension)
+        output_audio_local_path = os.path.join(temp_dir, f"output_{unique_uuid}.wav")
+
         concatenated_audio.export(output_audio_local_path, format="wav")
 
         logging.info(f"[AUDIO_EXPORTED]: {unique_uuid}.")
 
         output_audio_s3_path = f"{unique_uuid}_output.wav"
 
-        presignedUrl = upload_to_s3(
-            output_audio_local_path, output_audio_s3_path, userId
-        )
+        if run_bulk:
+            file_path = output_audio_local_path
+        else:
+            output_audio_s3_path = f"{unique_uuid}_output.wav"
+            presignedUrl = upload_to_s3(
+                output_audio_local_path, output_audio_s3_path, userId
+            )
+            file_path = presignedUrl
 
         logging.info(f"[AUDIO_UPLOADED]: {unique_uuid}.")
 
-        if os.path.exists(temp_dir):
-            shutil.rmtree(temp_dir)
+        # if os.path.exists(temp_dir):
+        #     shutil.rmtree(temp_dir)
 
         # Compute metrics for audio based on nonsilent_ranges and audio duration
         metrics = compute_audio_metrics(original_duration, nonsilent_ranges)
 
-        return presignedUrl, unique_uuid, metrics
+        return file_path, unique_uuid, metrics
 
     except Exception as e:
         logging.error(f"Error processing audio {input_audio_url}. Error: {str(e)}")
