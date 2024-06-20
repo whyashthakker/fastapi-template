@@ -14,7 +14,7 @@ from time import sleep
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-from fastapi import HTTPException, Header, Depends
+from fastapi import HTTPException, Header, Depends, status
 
 # Local libraries
 from remove_silence import *
@@ -93,32 +93,45 @@ def verify_authorization_key(authorization_key: str = Header(...)):
 
 
 @app.post("/get-media-duration/")
-async def get_media_duration_route(item: MediaDurationItem):
-    media_url = item.media_url
-    email = item.email
-    userId = item.userId
-    available_credits = item.available_credits
-    task_type = item.task_type
+async def get_media_duration_route(
+    item: MediaDurationItem, authorization: str = Depends(verify_authorization_key)
+):
+    try:
+        media_url = item.media_url
+        email = item.email
+        userId = item.userId
+        available_credits = item.available_credits
+        task_type = item.task_type
 
-    duration = get_total_duration(media_url)
-    cost = calculate_cost(duration, task_type=task_type)
+        duration = get_total_duration(media_url)
+        cost = calculate_cost(duration, task_type=task_type)
 
-    if available_credits < cost:
-        raise HTTPException(
-            status_code=403,
-            detail={
+        if available_credits < cost:
+            return {
                 "status": "Low Credit Warning.",
-                "error_message": "Insufficient credits for the media duration.",
+                "status_code": "LOW_CREDITS",
+                "message": "Insufficient credits for the media duration.",
                 "media_duration": duration,
                 "cost": cost,
+            }
+        else:
+            return {
+                "status": "Media duration retrieved successfully.",
+                "status_code": "SUCCESS",
+                "message": "Media duration and cost calculated.",
+                "media_duration": duration,
+                "cost": cost,
+            }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "status": "Error",
+                "error_message": str(e),
+                "status_code": "ERROR",
             },
         )
-
-    return {
-        "status": "Media duration retrieved successfully.",
-        "media_duration": duration,
-        "cost": cost,
-    }
 
 
 # 4. FastAPI Route
@@ -254,7 +267,11 @@ async def remove_silence_route(
 
 
 @app.post("/audio-silence/")
-async def audio_silence_removal(item: AudioItem, background_tasks: BackgroundTasks):
+async def audio_silence_removal(
+    item: AudioItem,
+    background_tasks: BackgroundTasks,
+    authorization: str = Depends(verify_authorization_key),
+):
     input_audio_url = item.input_audio
     input_audio_urls = item.input_audio_urls
     email = item.email
