@@ -6,7 +6,7 @@ import tempfile
 import shutil
 import logging
 from uuid import uuid4
-from typing import Optional
+from typing import Optional, Union, List
 from dotenv import load_dotenv
 from time import sleep
 
@@ -29,6 +29,14 @@ app = FastAPI()
 
 # Load environment variables
 load_dotenv()
+
+
+class MediaDurationItem(BaseModel):
+    media_url: Union[str, List[str]]
+    email: str
+    userId: Optional[str] = None
+    available_credits: Optional[float] = None
+    task_type: Optional[str] = "remove_silence_video"
 
 
 class VideoItem(BaseModel):
@@ -82,6 +90,35 @@ def verify_authorization_key(authorization_key: str = Header(...)):
     if authorization_key not in CONFIGURED_KEYS:
         raise HTTPException(status_code=403, detail="Not authorized")
     return authorization_key
+
+
+@app.post("/get-media-duration/")
+async def get_media_duration_route(item: MediaDurationItem):
+    media_url = item.media_url
+    email = item.email
+    userId = item.userId
+    available_credits = item.available_credits
+    task_type = item.task_type
+
+    duration = get_total_duration(media_url)
+    cost = calculate_cost(duration, task_type=task_type)
+
+    if available_credits < cost:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "Low Credit Warning.",
+                "error_message": "Insufficient credits for the media duration.",
+                "media_duration": duration,
+                "cost": cost,
+            },
+        )
+
+    return {
+        "status": "Media duration retrieved successfully.",
+        "media_duration": duration,
+        "cost": cost,
+    }
 
 
 # 4. FastAPI Route
