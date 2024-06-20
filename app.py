@@ -33,7 +33,6 @@ load_dotenv()
 
 class MediaDurationItem(BaseModel):
     media_url: Union[str, List[str]]
-    email: str
     userId: Optional[str] = None
     available_credits: Optional[float] = None
     task_type: Optional[str] = "remove_silence_video"
@@ -98,7 +97,6 @@ async def get_media_duration_route(
 ):
     try:
         media_url = item.media_url
-        email = item.email
         userId = item.userId
         available_credits = item.available_credits
         task_type = item.task_type
@@ -106,22 +104,24 @@ async def get_media_duration_route(
         duration = get_total_duration(media_url)
         cost = calculate_cost(duration, task_type=task_type)
 
-        if available_credits < cost:
-            return {
-                "status": "Low Credit Warning.",
-                "status_code": "LOW_CREDITS",
-                "message": "Insufficient credits for the media duration.",
-                "media_duration": duration,
-                "cost": cost,
-            }
-        else:
-            return {
-                "status": "Media duration retrieved successfully.",
-                "status_code": "SUCCESS",
-                "message": "Media duration and cost calculated.",
-                "media_duration": duration,
-                "cost": cost,
-            }
+        # if available_credits < cost:
+        #     return {
+        #         "status": "Low Credit Warning.",
+        #         "status_code": "LOW_CREDITS",
+        #         "message": "Insufficient credits for the media duration.",
+        #         "uploaded_by": userId,
+        #         "media_duration": duration,
+        #         "cost": cost,
+        #     }
+        # else:
+        return {
+            "status": "Media duration retrieved successfully.",
+            "status_code": "SUCCESS",
+            "message": "Media duration and cost calculated.",
+            "uploaded_by": userId,
+            "media_duration": duration,
+            "cost": cost,
+        }
 
     except Exception as e:
         raise HTTPException(
@@ -129,6 +129,7 @@ async def get_media_duration_route(
             detail={
                 "status": "Error",
                 "error_message": str(e),
+                "uploaded_by": userId,
                 "status_code": "ERROR",
             },
         )

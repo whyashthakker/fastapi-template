@@ -12,27 +12,27 @@ def get_media_duration(url: str) -> float:
         "ffprobe",
         "-v",
         "error",
+        "-select_streams",
+        "a:0",
         "-show_entries",
-        "format=duration",
+        "stream=duration",
         "-of",
-        "json",
+        "default=noprint_wrappers=1:nokey=1",
         url,
     ]
     result = subprocess.run(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
     )
-    output = json.loads(result.stdout)
 
-    logging.info(f"FFprobe output: {output}")
-    logging.info(f"FFprobe stderr: {result.stderr}")
-
-    if "format" not in output or "duration" not in output["format"]:
-        logging.error(f"Unexpected ffprobe output: {output}")
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError:
+        logging.error(f"Unexpected ffprobe output: {result.stdout}")
+        logging.error(f"FFprobe stderr: {result.stderr}")
         raise ValueError("Failed to retrieve media duration from ffprobe output.")
 
-    logging.info(f"Media duration: {float(output['format']['duration'])}")
-
-    return float(output["format"]["duration"])
+    logging.info(f"Media duration: {duration}")
+    return duration
 
 
 def get_total_duration(urls: Union[str, List[str]]) -> float:
