@@ -97,41 +97,42 @@ async def get_media_duration_route(
 ):
     try:
         media_url = item.media_url
-        userId = item.userId
-        available_credits = item.available_credits
-        task_type = item.task_type
+        duration = get_total_duration(media_url)
+        duration_minutes = duration / 60  # Convert seconds to minutes
 
         duration = get_total_duration(media_url)
-        cost = calculate_cost(duration, task_type=task_type)
 
-        # if available_credits < cost:
-        #     return {
-        #         "status": "Low Credit Warning.",
-        #         "status_code": "LOW_CREDITS",
-        #         "message": "Insufficient credits for the media duration.",
-        #         "uploaded_by": userId,
-        #         "media_duration": duration,
-        #         "cost": cost,
-        #     }
-        # else:
-        return {
+        duration_minutes = duration / 60  # Convert seconds to minutes
+
+        response = {
             "status": "Media duration retrieved successfully.",
             "status_code": "SUCCESS",
-            "message": "Media duration and cost calculated.",
-            "uploaded_by": userId,
+            "message": "Media duration calculated.",
             "media_duration": duration,
-            "cost": cost,
+            "media_duration_minutes": duration_minutes,
         }
 
+        if item.userId:
+            response["uploaded_by"] = item.userId
+
+        if item.available_credits is not None and item.task_type:
+            cost = calculate_cost(duration, task_type=item.task_type)
+            response["cost"] = cost
+
+        return response
+
     except Exception as e:
+        error_response = {
+            "status": "Error",
+            "error_message": str(e),
+            "status_code": "ERROR",
+        }
+        if item.userId:
+            error_response["uploaded_by"] = item.userId
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "status": "Error",
-                "error_message": str(e),
-                "uploaded_by": userId,
-                "status_code": "ERROR",
-            },
+            detail=error_response,
         )
 
 
